@@ -1,6 +1,7 @@
-import '../../src/config/settings.js'; // ✅ Ensures registration happens before tests
+import '../../src/config/settings.js';
 import { expect } from 'chai';
 import sinon from 'sinon';
+import { createMockCanvas } from './canvasFixture.js';
 import { setupJsdom } from '../setup/jsdomSetup.js';
 import { GUIAdapter } from '../../src/gui/adapters/GUIAdapter.js';
 import { Circuit } from '../../src/domain/aggregates/Circuit.js';
@@ -24,23 +25,7 @@ describe('GUIAdapter Tests', () => {
         });
 
         // Mock canvas element
-        canvas = {
-            width: 800,
-            height: 600,
-            getContext: () => ({
-                clearRect: sinon.spy(),
-                beginPath: sinon.spy(),
-                moveTo: sinon.spy(),
-                lineTo: sinon.spy(),
-                stroke: sinon.spy(),
-                arc: sinon.spy(),
-                fill: sinon.spy(),
-                fillRect: sinon.spy(),
-                fillText: sinon.spy(),
-            }),
-            addEventListener: sinon.spy(),
-            removeEventListener: sinon.spy(),
-        };
+        canvas = createMockCanvas();
 
         const circuit = new Circuit();
         const circuitService = new CircuitService(circuit, ElementRegistry);
