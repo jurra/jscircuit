@@ -8,6 +8,7 @@ import { generateId } from '../utils/idGenerator.js';
 import { Properties } from '../domain/valueObjects/Properties.js';
 import { GUICommandRegistry } from "../gui/commands/GUICommandRegistry.js";
 import { AddElementCommand } from "../gui/commands/AddElementCommand.js";
+import { DragElementCommand } from "../gui/commands/GUIDragElementCommand.js";
 
 
 // Ensure elements are registered once
@@ -27,6 +28,12 @@ console.log(" ElementRegistry after registration:", ElementRegistry.getTypes());
 GUICommandRegistry.register("addElement", (circuitService, circuitRenderer, elementRegistry, elementType) =>
     new AddElementCommand(circuitService, circuitRenderer, elementRegistry, elementType)
 );
+
+GUICommandRegistry.register("dragElement", (circuitService) =>
+    new DragElementCommand(circuitService)
+);
+
+console.log("GUICommandRegistry after registration:", GUICommandRegistry.getTypes());
 
 // Configure RendererFactory
 const rendererFactory = new RendererFactory();

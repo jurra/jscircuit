@@ -25,8 +25,17 @@ export class DragElementCommand extends GUICommand {
         if (this.draggedElement) {
             const dx = x - this.offset.x;
             const dy = y - this.offset.y;
-            this.draggedElement.nodes = this.draggedElement.nodes.map((node) => new Position(dx, dy));
 
+            // Maintain relative positioning of all nodes
+            const firstNode = this.draggedElement.nodes[0]; // Reference node
+            const deltaX = dx - firstNode.x; // Compute offset
+            const deltaY = dy - firstNode.y;
+
+            this.draggedElement.nodes = this.draggedElement.nodes.map((node) =>
+                new Position(node.x + deltaX, node.y + deltaY) // ✅ Move each node while keeping relative distance
+            );
+
+            //  Notify UI to update
             this.circuitService.emit("update", { type: "moveElement", element: this.draggedElement });
         }
     }

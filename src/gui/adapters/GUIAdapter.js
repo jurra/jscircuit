@@ -129,18 +129,32 @@ export class GUIAdapter {
      * Sets up canvas interactions for dragging elements.
      */
     setupCanvasInteractions() {
+        let dragCommand = null;  // Cache the command to prevent infinite looping
+
         this.canvas.addEventListener("mousedown", (event) => {
             const { offsetX, offsetY } = event;
-            this.circuitRenderer.startDrag(offsetX, offsetY);
+            //  Retrieve the drag command only ONCE when dragging starts
+            dragCommand = this.guiCommandRegistry.get("dragElement", this.circuitService);
+
+            if (dragCommand) {
+                dragCommand.start(offsetX, offsetY);
+            } else {
+                console.warn("⚠️ Drag command not found in registry");
+            }
         });
 
         this.canvas.addEventListener("mousemove", (event) => {
-            const { offsetX, offsetY } = event;
-            this.circuitRenderer.dragElement(offsetX, offsetY);
+            if (dragCommand) { //  Only execute if a drag command exists
+                const { offsetX, offsetY } = event;
+                dragCommand.move(offsetX, offsetY);
+            }
         });
 
         this.canvas.addEventListener("mouseup", () => {
-            this.circuitRenderer.stopDrag();
+            if (dragCommand) {
+                dragCommand.stop();
+                dragCommand = null;  // Reset command after stopping to prevent looping
+            }
         });
     }
 }

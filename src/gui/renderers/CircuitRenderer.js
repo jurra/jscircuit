@@ -88,7 +88,6 @@ export class CircuitRenderer {
         this.context.scale(this.scale, this.scale);
 
         // Draw background grid
-        console.log("Drawing grid...");
         this.drawGrid();
 
         // Iterate over circuit elements and render them
@@ -180,47 +179,6 @@ export class CircuitRenderer {
         this.isPanning = false;
     }
 
-    /**
-     * Starts dragging an element based on cursor position.
-     * @param {number} x - X-coordinate of the cursor.
-     * @param {number} y - Y-coordinate of the cursor.
-     */
-    startDrag(x, y) {
-        for (const element of this.circuitService.getElements()) {
-            if (this.isInsideElement(x, y, element)) {
-                this.draggedElement = element;
-                const [start] = element.nodes;
-                this.offset.x = x - start.x;
-                this.offset.y = y - start.y;
-                return;
-            }
-        }
-    }
-
-    /**
-     * Drags the currently selected element to a new position.
-     * @param {number} x - The new X-coordinate of the cursor.
-     * @param {number} y - The new Y-coordinate of the cursor.
-     */
-    dragElement(x, y) {
-        if (this.draggedElement) {
-            const dx = x - this.offset.x;
-            const dy = y - this.offset.y;
-            this.draggedElement.nodes = this.draggedElement.nodes.map((node) => ({
-                x: dx + (node.x - this.draggedElement.nodes[0].x),
-                y: dy + (node.y - this.draggedElement.nodes[0].y),
-            }));
-
-            this.render();
-        }
-    }
-
-    /**
-     * Stops the current drag operation.
-     */
-    stopDrag() {
-        this.draggedElement = null;
-    }
 
     /**
      * Determines if a point is inside an element's boundary.
