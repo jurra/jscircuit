@@ -12,7 +12,6 @@ import { AddElementCommand } from "../gui/commands/AddElementCommand.js";
 
 // Ensure elements are registered once
 if (ElementRegistry.getTypes().length === 0) {
-    console.log(" Registering elements in ElementRegistry...");
 
     ElementRegistry.register('Resistor', (id = generateId('R'), nodes, label = null, properties = {}) =>
         new Resistor(id, nodes, label, new Properties(properties))
@@ -24,14 +23,10 @@ if (ElementRegistry.getTypes().length === 0) {
 
 console.log(" ElementRegistry after registration:", ElementRegistry.getTypes());
 
-// ✅ Register commands globally before GUI initialization
+//  Register commands globally before GUI initialization
 GUICommandRegistry.register("addElement", (circuitService, circuitRenderer, elementRegistry, elementType) =>
     new AddElementCommand(circuitService, circuitRenderer, elementRegistry, elementType)
 );
-
-console.log("✅ Commands registered:", GUICommandRegistry.getTypes());
-console.log("✅ Commands:", GUICommandRegistry._registry);
-console.log("✅ Command name:", GUICommandRegistry.get("addElement"));
 
 // Configure RendererFactory
 const rendererFactory = new RendererFactory();

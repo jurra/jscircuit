@@ -57,10 +57,7 @@ export class CircuitService extends EventEmitter {
                         properties // Properties (default to empty object)
                     );
 
-                    console.log("✅ Created New Element:", newElement);
-
                     this.addElement(newElement);
-                    console.log("Created New Element:", newElement);
                 } catch (error) {
                     console.error(`Error creating element: ${error.message}`);
                 }

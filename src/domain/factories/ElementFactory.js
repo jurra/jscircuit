@@ -17,8 +17,6 @@ export class ElementFactory {
     * @throws {Error} - If the type is not registered in the registry.
     */
     static create(type, id, nodes, propertiesArgs) {
-        console.log("🔧 ElementFactory.create:", type, id, nodes, propertiesArgs);
-
         const factoryFunction = ElementRegistry.get(type);
 
         if (!factoryFunction) {
