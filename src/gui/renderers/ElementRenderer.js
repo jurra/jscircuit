@@ -3,7 +3,7 @@ export class ElementRenderer {
   constructor(context) {
     this.context = context;
     // Optional: show alignment guide markers (set to true to debug or visualize)
-    this.showAlignmentGuide = true;
+    this.showAlignmentGuide = false;
     // You can configure the guide color and size here:
     this.alignmentGuideColor = "red";
     this.alignmentGuideSize = 4; // pixels radius for the guide cross
