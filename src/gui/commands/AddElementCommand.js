@@ -55,23 +55,10 @@ export class AddElementCommand extends GUICommand {
     // If snapping is enabled, adjust the nodes so that the primary node is snapped.
     let finalNodes = nodes;
     if (this.enableSnapping) {
-      // Snap the primary node (assumed to be the first node) to the nearest grid intersection.
-      const primary = nodes[0];
-      const snappedPrimary = {
-        x: Math.round(primary.x / this.gridSpacing) * this.gridSpacing,
-        y: Math.round(primary.y / this.gridSpacing) * this.gridSpacing,
-      };
-
-      // Calculate the offset between the snapped primary and the original primary.
-      const offset = {
-        x: snappedPrimary.x - primary.x,
-        y: snappedPrimary.y - primary.y,
-      };
-
       // Adjust all nodes by the same offset.
-      finalNodes = nodes.map((n) => ({
-        x: n.x + offset.x,
-        y: n.y + offset.y,
+      finalNodes = nodes.map(n => ({
+        x: Math.round(n.x / this.gridSpacing) * this.gridSpacing,
+        y: Math.round(n.y / this.gridSpacing) * this.gridSpacing
       }));
     }
 
