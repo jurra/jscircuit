@@ -54,6 +54,12 @@ export class CircuitRenderer {
         this.pan = this.pan.bind(this);
         this.stopPan = this.stopPan.bind(this);
 
+        // Grid settings: these are configurable.
+        // For example, gridSpacing is in logical (domain) coordinates.
+        this.gridSpacing = 10;        // Default grid spacing
+        this.gridColor = 'gray';        // Color for the grid lines
+        this.gridLineWidth = 0.5;         // Line width for grid lines
+
         // Attach Event Listeners
         this.initEventListeners();
     }
@@ -108,21 +114,47 @@ export class CircuitRenderer {
         this.context.restore();
     }
 
-    drawGrid() {
-        const dotSpacing = 40;  // Distance between dots
-        const dotRadius = 1.5;  // Dot size
+/**
+* Draws a grid composed of gray vertical and horizontal lines.
+* The grid spacing is configurable (this.gridSpacing).
+*/
+drawGrid() {
+    const ctx = this.context;
+    // Use the renderer's grid settings:
+    const spacing = this.gridSpacing;
+    ctx.strokeStyle = this.gridColor;
+    ctx.lineWidth = this.gridLineWidth;
 
-        this.context.fillStyle = "black";
+    // The context is already transformed (translated & scaled)
+    // Determine the visible logical area:
+    const logicalWidth = this.canvas.width / this.scale;
+    const logicalHeight = this.canvas.height / this.scale;
 
-        // Draw dots in the visible area
-        for (let x = -this.offsetX % dotSpacing; x < this.canvas.width; x += dotSpacing) {
-            for (let y = -this.offsetY % dotSpacing; y < this.canvas.height; y += dotSpacing) {
-                this.context.beginPath();
-                this.context.arc(x, y, dotRadius, 0, Math.PI * 2);
-                this.context.fill();
-            }
-        }
+    // Determine start positions in logical coordinates:
+    // Since we have already translated the context, the origin (0,0) is shifted by offsetX and offsetY.
+    // But the visible logical area is simply from -offsetX/scale to (canvas.width-offsetX)/scale.
+    // However, it is simpler to compute the starting grid line using current pan and scale.
+    // We'll compute the top-left logical coordinate:
+    const startX = -this.offsetX / this.scale;
+    const startY = -this.offsetY / this.scale;
+
+    // Determine the first vertical line to draw:
+    let firstVerticalLine = Math.floor(startX / spacing) * spacing;
+    // Draw vertical lines covering the visible area:
+    ctx.beginPath();
+    for (let x = firstVerticalLine; x <= startX + logicalWidth; x += spacing) {
+      ctx.moveTo(x, startY);
+      ctx.lineTo(x, startY + logicalHeight);
     }
+
+    // Determine the first horizontal line:
+    let firstHorizontalLine = Math.floor(startY / spacing) * spacing;
+    for (let y = firstHorizontalLine; y <= startY + logicalHeight; y += spacing) {
+      ctx.moveTo(startX, y);
+      ctx.lineTo(startX + logicalWidth, y);
+    }
+    ctx.stroke();
+  }
 
 
     /**

@@ -8,3 +8,5 @@ node_modules
 
 # Ignored build files
 dist/
+
+compile.txt

@@ -1,66 +1,103 @@
+// AddElementCommand.js
 import { GUICommand } from "./GUICommand.js";
 import { Position } from "../../domain/valueObjects/Position.js";
-
 /**
- * Command to add an element to the circuit.
- * Directly modifies the circuit and notifies UI updates.
+ *
+ * @param {CircuitService} circuitService - The circuit service to use.
+ * @param {CircuitRenderer} circuitRenderer - The circuit renderer to use.
+ * @param {ElementRegistry} elementRegistry - The element registry to use.
+ * @param {string} elementType - The element type
+ *
+ * return {AddElementCommand}
  */
 export class AddElementCommand extends GUICommand {
-    constructor(circuitService, circuitRenderer, elementRegistry, elementType) {
-        super();
-        this.circuitService = circuitService;
-        this.circuitRenderer = circuitRenderer;
-        this.elementRegistry = elementRegistry;
-        this.elementType = elementType;
+  constructor(circuitService, circuitRenderer, elementRegistry, elementType) {
+    super();
+    this.circuitService = circuitService;
+    this.circuitRenderer = circuitRenderer;
+    this.elementRegistry = elementRegistry;
+    this.elementType = elementType;
 
-        // Default positioning for new elements
-        this.DEFAULT_X = 400;  // Center X position
-        this.DEFAULT_Y = 300;  // Center Y position
-        this.ELEMENT_WIDTH = 60;  // Width for default elements (matches image size)
+    // Defaults for positioning (in logical coordinates)
+    this.DEFAULT_X = 400;
+    this.DEFAULT_Y = 300;
+    this.ELEMENT_WIDTH = 50; // This should not be a constant because element sizes might differ.
+
+    // Snapping configuration (assumed to be provided from UI, e.g., via GUIAdapter)
+    this.enableSnapping = true; // Optionally turn snapping on/off
+    this.gridSpacing = 10; // Grid spacing in logical coordinates
+  }
+
+  /**
+   * Executes the command, snapping the primary node (first node) to the nearest grid point.
+   * All other nodes are adjusted relative to the snapped primary node.
+   * @param {Array} nodes - An array of objects with {x, y} coordinates.
+   */
+  execute(nodes = null) {
+    console.log(`Executing AddElementCommand for: ${this.elementType}`);
+
+    const factory = this.elementRegistry.get(this.elementType);
+    if (!factory) {
+      console.error(
+        `Factory function for element type "${this.elementType}" not found.`,
+      );
+      return;
     }
 
-    /**
-     * Executes the command with provided node positions.
-     * @param {Position[]} nodes - The precise node positions calculated by the renderer.
-     */
-    execute(nodes = null) {
-        console.log(`Executing AddElementCommand for: ${this.elementType}`);
-
-        const factory = this.elementRegistry.get(this.elementType);
-        if (!factory) {
-            console.error(`❌ Factory function for element type "${this.elementType}" not found.`);
-            return;
-        }
-
-        // If no nodes are provided, use a default position
-        if (!nodes || !Array.isArray(nodes) || nodes.length !== 2) {
-            console.warn("⚠️ No valid node positions provided. Using default centered position.");
-
-            nodes = [
-                new Position(this.DEFAULT_X - this.ELEMENT_WIDTH / 2, this.DEFAULT_Y), // Left terminal
-                new Position(this.DEFAULT_X + this.ELEMENT_WIDTH / 2, this.DEFAULT_Y)  // Right terminal
-            ];
-        }
-
-        console.log(`📌 Final node positions:`, nodes);
-
-        // Create the element with computed positions
-        const element = factory(undefined, nodes, null, {});
-        console.log("✅ Element created:", element);
-
-        // Add to circuit and update UI
-        this.circuitService.addElement(element);
-        this.circuitService.emit("update", { type: "addElement", element });
-        this.circuitRenderer.render();
+    // Use default positions if none provided.
+    if (!nodes || !Array.isArray(nodes) || nodes.length !== 2) {
+      nodes = [
+        { x: this.DEFAULT_X - this.ELEMENT_WIDTH / 2, y: this.DEFAULT_Y },
+        { x: this.DEFAULT_X + this.ELEMENT_WIDTH / 2, y: this.DEFAULT_Y },
+      ];
     }
 
-    bind() {
-        const button = document.getElementById(`add${this.elementType}`);
-        if (!button) {
-            console.warn(`Button with ID "add${this.elementType}" not found.`);
-            return;
-        }
-        button.addEventListener("click", () => this.execute());
-        console.log(`Bound AddElementCommand to add${this.elementType}`);
+    // If snapping is enabled, adjust the nodes so that the primary node is snapped.
+    let finalNodes = nodes;
+    if (this.enableSnapping) {
+      // Snap the primary node (assumed to be the first node) to the nearest grid intersection.
+      const primary = nodes[0];
+      const snappedPrimary = {
+        x: Math.round(primary.x / this.gridSpacing) * this.gridSpacing,
+        y: Math.round(primary.y / this.gridSpacing) * this.gridSpacing,
+      };
+
+      // Calculate the offset between the snapped primary and the original primary.
+      const offset = {
+        x: snappedPrimary.x - primary.x,
+        y: snappedPrimary.y - primary.y,
+      };
+
+      // Adjust all nodes by the same offset.
+      finalNodes = nodes.map((n) => ({
+        x: n.x + offset.x,
+        y: n.y + offset.y,
+      }));
     }
+
+    // Create new Position instances from finalNodes.
+    const positions = finalNodes.map((pt) => new Position(pt.x, pt.y));
+
+    // Create the element via the factory.
+    const element = factory(undefined, positions, null, {});
+    console.log("Element created with snapped nodes:", element);
+
+    // Add the element to the circuit.
+    this.circuitService.addElement(element);
+    this.circuitService.emit("update", { type: "addElement", element });
+
+    if (this.circuitRenderer) {
+      this.circuitRenderer.render();
+    }
+  }
+
+  bind() {
+    const button = document.getElementById(`add${this.elementType}`);
+    if (!button) {
+      console.warn(`Button for adding ${this.elementType} not found.`);
+      return;
+    }
+    button.addEventListener("click", () => this.execute());
+    console.log(`Bound AddElementCommand to add${this.elementType}`);
+  }
 }

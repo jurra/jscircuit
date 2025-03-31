@@ -1,3 +1,4 @@
+// GUIDragElementCommand.js
 import { GUICommand } from "./GUICommand.js";
 import { Position } from "../../domain/valueObjects/Position.js";
 
@@ -7,51 +8,81 @@ export class DragElementCommand extends GUICommand {
     this.circuitService = circuitService;
     this.draggedElement = null;
     this.offset = { x: 0, y: 0 };
+
+    // New: Snapping settings (could be set externally)
+    this.enableSnapping = true;  // default: true
+    this.gridSpacing = 10;       // the value is pixels
   }
 
-  start(x, y) {
+  /**
+   * Called on mousedown to check if the user clicked on an element.
+   * If so, prepare for dragging that element.
+   */
+  start(mouseX, mouseY) {
     for (const element of this.circuitService.getElements()) {
-      if (this.isInsideElement(x, y, element)) {
+      if (this.isInsideElement(mouseX, mouseY, element)) {
         this.draggedElement = element;
-        const [start] = element.nodes;
-        this.offset.x = x - start.x;
-        this.offset.y = y - start.y;
+
+        // We'll measure offset from the first node
+        const [startNode] = element.nodes;
+        this.offset.x = mouseX - startNode.x;
+        this.offset.y = mouseY - startNode.y;
         return;
       }
     }
   }
 
-  move(x, y) {
-    if (this.draggedElement) {
-        const dx = (x - this.offset.x);
-        const dy = (y - this.offset.y);
+  /**
+   * Called repeatedly during mousemove, updating the element's position.
+   */
+  move(mouseX, mouseY) {
+    if (!this.draggedElement) return;
 
-        const firstNode = this.draggedElement.nodes[0];
-        const deltaX = dx - firstNode.x;
-        const deltaY = dy - firstNode.y;
+    // 1) Compute the intended new "top-left" or first-node position
+    let intendedX = mouseX - this.offset.x;
+    let intendedY = mouseY - this.offset.y;
 
-        this.draggedElement.nodes = this.draggedElement.nodes.map((node) =>
-            new Position(node.x + deltaX, node.y + deltaY)
-        );
-
-        this.circuitService.emit("update", { type: "moveElement", element: this.draggedElement });
+    // 2) If snapping is enabled, round to nearest grid spacing
+    if (this.enableSnapping) {
+      intendedX = Math.round(intendedX / this.gridSpacing) * this.gridSpacing;
+      intendedY = Math.round(intendedY / this.gridSpacing) * this.gridSpacing;
     }
-}
 
+    // 3) Determine how far the first node must move
+    const firstNode = this.draggedElement.nodes[0];
+    const deltaX = intendedX - firstNode.x;
+    const deltaY = intendedY - firstNode.y;
+
+    // 4) Update *all* nodes by the same delta
+    this.draggedElement.nodes = this.draggedElement.nodes.map((node) =>
+      new Position(node.x + deltaX, node.y + deltaY)
+    );
+
+    // 5) Notify the UI that the element has moved
+    this.circuitService.emit("update", {
+      type: "moveElement",
+      element: this.draggedElement
+    });
+  }
+
+  /**
+   * Called on mouseup to end the drag operation.
+   */
   stop() {
     this.draggedElement = null;
   }
 
-  // Helper method to check if a point is inside an element
+  /**
+   * Helper method to check if the user clicked near the "line" of an element.
+   * This is the same logic you already had, expanded for clarity.
+   */
   isInsideElement(x, y, element) {
-    const auraSize = 10; //  Expand clickable area beyond element size
-
-    if (element.nodes.length < 2) return false; //  Must have at least two nodes
+    const auraSize = 10; // Expand clickable area beyond the exact line
+    if (element.nodes.length < 2) return false;
 
     const [start, end] = element.nodes;
-
-    // Calculate distance of the point (x, y) from the element line
     const lineLength = Math.hypot(end.x - start.x, end.y - start.y);
+
     const distance =
       Math.abs(
         (end.y - start.y) * x -
@@ -60,7 +91,6 @@ export class DragElementCommand extends GUICommand {
           end.y * start.x,
       ) / lineLength;
 
-    // Allow clicks if within `auraSize` pixels of the element
     return distance <= auraSize;
   }
 }
