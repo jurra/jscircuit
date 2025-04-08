@@ -23,10 +23,12 @@ export class DragElementCommand extends GUICommand {
       if (this.isInsideElement(mouseX, mouseY, element)) {
         this.draggedElement = element;
 
-        // We'll measure offset from the first node
-        const [startNode] = element.nodes;
-        this.offset.x = mouseX - startNode.x;
-        this.offset.y = mouseY - startNode.y;
+        // We'll measure offset from the first node only if there's at least one node
+        if (Array.isArray(element.nodes) && element.nodes.length > 0) {
+          const [startNode] = element.nodes;
+          this.offset.x = mouseX - startNode.x;
+          this.offset.y = mouseY - startNode.y;
+        }
         return;
       }
     }
@@ -36,7 +38,16 @@ export class DragElementCommand extends GUICommand {
    * Called repeatedly during mousemove, updating the element's position.
    */
   move(mouseX, mouseY) {
+    // If no element was clicked, nothing to do
     if (!this.draggedElement) return;
+
+    // Ensure we have a non-empty array of nodes before proceeding
+    if (
+      !Array.isArray(this.draggedElement.nodes) ||
+      this.draggedElement.nodes.length === 0
+    ) {
+      return;
+    }
 
     // 1) Compute the intended new "top-left" or first-node position
     let intendedX = mouseX - this.offset.x;
@@ -78,7 +89,11 @@ export class DragElementCommand extends GUICommand {
    */
   isInsideElement(worldX, worldY, element) {
     const auraSize = 10; // The clickable "fudge factor"
-    if (element.nodes.length < 2) return false;
+
+    // If nodes is missing or fewer than 2, skip line distance checks
+    if (!Array.isArray(element.nodes) || element.nodes.length < 2) {
+      return false;
+    }
 
     const [start, end] = element.nodes;
     const lineLength = Math.hypot(end.x - start.x, end.y - start.y);
