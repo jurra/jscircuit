@@ -116,4 +116,18 @@ export class Circuit {
 
         return true;
     }
+
+    /**
+     * Serializes the circuit elements into a format suitable for export.
+     * @returns {Object[]} Serialized elements in the circuit.
+     * Each element is represented as an object with properties
+     */
+    getSerializedElements() {
+        return this.elements.map(el => ({
+            id: el.id,
+            type: el.type,
+            nodes: el.nodes.map(p => ({ x: p.x, y: p.y })),
+            properties: el.properties.values
+        }));
+    }
 }
