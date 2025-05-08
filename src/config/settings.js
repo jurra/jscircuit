@@ -22,8 +22,6 @@ if (ElementRegistry.getTypes().length === 0) {
     );
 }
 
-console.log(" ElementRegistry after registration:", ElementRegistry.getTypes());
-
 //  Register commands globally before GUI initialization
 GUICommandRegistry.register("addElement", (circuitService, circuitRenderer, elementRegistry, elementType) =>
     new AddElementCommand(circuitService, circuitRenderer, elementRegistry, elementType)
@@ -37,7 +35,6 @@ GUICommandRegistry.register("drawWire", (circuitService, elementRegistry) =>
     new DrawWireCommand(circuitService, elementRegistry)
 );
 
-console.log("GUICommandRegistry after registration:", GUICommandRegistry.getTypes());
 
 // Configure RendererFactory
 const rendererFactory = new RendererFactory();

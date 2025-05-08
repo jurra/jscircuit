@@ -25,7 +25,7 @@ describe('QucatNetlistAdapter roundtrip test with CircuitService', () => {
             const service = new CircuitService(circuit, ElementRegistry);
 
             const r1 = new Resistor('R1', [new Position(0, 0), new Position(1, 0)], null, new Properties({ resistance: 1000 }));
-            const r2 = new Resistor('R2', [new Position(2, 1), new Position(2, 2)], null, new Properties({}));
+            const r2 = new Resistor('R2', [new Position(2, 1), new Position(2, 2)], null, new Properties());
             const w1 = new Wire('W1', [new Position(1, 0), new Position(1, 1)]);
             const w2 = new Wire('W2', [new Position(1, 1), new Position(2, 1)]);
 

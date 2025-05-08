@@ -1,5 +1,6 @@
 import { Element } from './Element.js';
 import { Properties } from '../valueObjects/Properties.js';
+import { Resistance } from '../valueObjects/Resistance.js';
 
 /**
  * Represents a Resistor in the circuit.
@@ -17,6 +18,20 @@ export class Resistor extends Element {
         if (nodes.length !== 2) {
             throw new Error("A Resistor must have exactly two nodes.");
         }
+
+        if (!(properties instanceof Properties)) {
+            throw new Error("Properties must be an instance of Properties.");
+        }
+
+        const resistance = properties.values.resistance;
+
+        if (resistance !== undefined) {
+            if (typeof resistance !== 'number') {
+                throw new Error("Resistance must be a number or undefined.");
+            }
+            new Resistance(resistance); // validates
+        }
+
         super(id, nodes, label, properties);
         this.type = 'resistor';
     }

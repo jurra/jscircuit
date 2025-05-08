@@ -104,27 +104,20 @@ export class QucatNetlistAdapter {
             const [x2, y2] = pos2.split(',').map(Number);
             const nodes = [new Position(x1, y1), new Position(x2, y2)];
     
-            // Preserve property key even if value is missing
+            // Parse value correctly
             const raw = valueStr?.trim();
-            const value = raw === '' || raw === undefined ? undefined : parseFloat(raw);
+            const parsedValue = raw === '' || raw === undefined ? undefined : parseFloat(raw);
 
             const label = labelStr && labelStr.trim() !== '' ? labelStr : null;
 
+            // Always create the property object with the correct key
             const propObj = {};
             if (propertyKey !== undefined) {
-                propObj[propertyKey] = value;
+                propObj[propertyKey] = parsedValue;
             }
 
-
-            let properties;
-            if (value !== undefined) {
-                properties = new Properties(propObj); // Must accept undefined
-            }
-
-            if (propObj == undefined) {
-                // If properties is undefined, create an empty Properties instance
-                properties = new Properties();
-            }
+            //  Always create a Properties instance
+            const properties = new Properties(propObj);
 
             const element = ElementFactory.create(fullType, null, nodes, properties, label);
             elements.push(element);
