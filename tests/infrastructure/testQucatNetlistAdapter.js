@@ -58,7 +58,7 @@ describe('QucatNetlistAdapter roundtrip test with CircuitService', () => {
 
         it('(Deserializing) Should create an element with required property even if empty', () => {
             const importedElements = QucatNetlistAdapter.importFromFile(EXPORT_PATH);
-            const resistorWithoutValue = importedElements.find(e => e.id.startsWith('R2'));
+            const resistorWithoutValue = importedElements.find(e => e.id.startsWith('R8'));
             assert('resistance' in resistorWithoutValue.properties.values, 'resistor must have a resistance key');
             assert.strictEqual(resistorWithoutValue.properties.values.resistance, undefined, 'resistance value must be undefined');
         });
@@ -91,9 +91,19 @@ describe('QucatNetlistAdapter roundtrip test with CircuitService', () => {
                     o.nodes.map(n => [n.x, n.y]),
                     `Node mismatch in element ${o.id}`
                 );
+                // Normalize: make sure both expected and actual include the same property keys
+                const expectedProps = { ...o.properties.values };
+                const actualProps = { ...r.properties.values };
+
+                // If a resistor or capacitor is missing the key in original (fixture), add it as undefined
+                const key = Object.keys(actualProps)[0]; // e.g., 'resistance'
+                if (!(key in expectedProps)) {
+                    expectedProps[key] = undefined;
+                }
+
                 assert.deepStrictEqual(
-                    r.properties.values,
-                    o.properties.values,
+                    actualProps,
+                    expectedProps,
                     `Property mismatch in element ${o.id}`
                 );
             }

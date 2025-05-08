@@ -13,7 +13,7 @@ export class Resistor extends Element {
      * @param {Label|null} label - The label of the resistor (optional).
      * @param {Properties} properties - A container for the resistor's properties, including resistance.
      */
-    constructor(id, nodes, label = null, properties = new Properties({ resistance: "undefined" })) {
+    constructor(id, nodes, label = null, properties = new Properties({ resistance: undefined })) {
         if (nodes.length !== 2) {
             throw new Error("A Resistor must have exactly two nodes.");
         }

@@ -58,8 +58,8 @@ export class QucatNetlistAdapter {
 
             // Identify which shorttype matches to type
             const mapEntry = Object.entries(typeMap).find(([shortType, { fullType }]) => fullType === type);
-            if (!mapEntry) throw new Error(`Unknown element type: ${type}`); // throw an error if type is not found
-            const [shortType] = mapEntry; // destructure to get the short type
+            if (!mapEntry) throw new Error(`Unknown element type: ${type}`);
+            const [shortType] = mapEntry;
 
             const node1 = `${nodes[0].x},${nodes[0].y}`;
             const node2 = `${nodes[1].x},${nodes[1].y}`;
@@ -69,7 +69,7 @@ export class QucatNetlistAdapter {
 
             let vFormatted = value;
 
-            // Format the value to a string
+            // Format number as scientific notation if needed
             if (typeof value === 'number') {
                 let decimals = 1, vString = '0';
                 while (parseFloat(vString) !== value && decimals < 15) {
@@ -78,6 +78,7 @@ export class QucatNetlistAdapter {
                 }
                 vFormatted = vString;
             }
+
             return `${shortType};${node1};${node2};${vFormatted};${labelStr}`;
         }).join('\n');
     }
@@ -90,7 +91,6 @@ export class QucatNetlistAdapter {
      */
     static _deserializeElements(lines) {
         const elements = [];
-
     
         for (const line of lines) {
             const [shortType, pos1, pos2, valueStr, labelStr] = line.trim().split(';');
@@ -109,21 +109,24 @@ export class QucatNetlistAdapter {
             const value = raw === '' || raw === undefined ? undefined : parseFloat(raw);
 
             const label = labelStr && labelStr.trim() !== '' ? labelStr : null;
-            const id = `${shortType}_${x1}_${y1}_${x2}_${y2}`;
 
-            const propObj = { [propertyKey]: value };
+            const propObj = {};
+            if (propertyKey !== undefined) {
+                propObj[propertyKey] = value;
+            }
+
 
             let properties;
             if (value !== undefined) {
                 properties = new Properties(propObj); // Must accept undefined
             }
 
-            if (propObj === undefined) {
+            if (propObj == undefined) {
                 // If properties is undefined, create an empty Properties instance
                 properties = new Properties();
             }
 
-            const element = ElementFactory.create(fullType, id, nodes, properties, label);
+            const element = ElementFactory.create(fullType, null, nodes, properties, label);
             elements.push(element);
         }
     
