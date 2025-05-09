@@ -32,7 +32,6 @@ class GUICommandRegistryClass {
             console.warn(`Command "${name}" not found.`);
             return null;
         }
-        console.log(`Calling ${name} with arguments:`, args);
         return this._registry.get(name)(...args);
     }
 

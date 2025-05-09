@@ -10,10 +10,11 @@ import { Position } from "../../domain/valueObjects/Position.js";
  * - On mouseup, we finalize; or if there's a "cancel()" call (no real movement), remove it.
  */
 export class DrawWireCommand extends GUICommand {
-  constructor(circuitService, elementRegistry) {
+  constructor(circuitService, elementRegistry, wireSplitService) {
     super();
     this.circuitService = circuitService;
     this.elementRegistry = elementRegistry;
+    this.wireSplitService = wireSplitService;
 
     // The wire we’re drawing
     this.wireElement = null;
@@ -128,6 +129,13 @@ export class DrawWireCommand extends GUICommand {
   stop() {
     this.drawing = false;
     this.direction = null;
+
+    // Attempt to split an existing wire if the drawn wire end touches it
+    if (this.wireElement && this.wireElement.nodes?.[1]) {
+      const endNode = this.wireElement.nodes[1];
+      this.wireSplitService.trySplitAtNode(endNode);
+    }
+
     this.wireElement = null;
   }
 

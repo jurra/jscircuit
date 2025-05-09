@@ -7,9 +7,7 @@ import { WireRenderer } from '../gui/renderers/WireRenderer.js';
 import { generateId } from '../utils/idGenerator.js';
 import { Properties } from '../domain/valueObjects/Properties.js';
 import { GUICommandRegistry } from "../gui/commands/GUICommandRegistry.js";
-import { AddElementCommand } from "../gui/commands/AddElementCommand.js";
-import { DragElementCommand } from "../gui/commands/GUIDragElementCommand.js";
-import { DrawWireCommand } from "../gui/commands/DrawWireCommand.js"; // wherever it's defined
+
 
 // Ensure elements are registered once
 if (ElementRegistry.getTypes().length === 0) {
@@ -21,20 +19,6 @@ if (ElementRegistry.getTypes().length === 0) {
         new Wire(id, nodes, label, new Properties(properties))
     );
 }
-
-//  Register commands globally before GUI initialization
-GUICommandRegistry.register("addElement", (circuitService, circuitRenderer, elementRegistry, elementType) =>
-    new AddElementCommand(circuitService, circuitRenderer, elementRegistry, elementType)
-);
-
-GUICommandRegistry.register("dragElement", (circuitService) =>
-    new DragElementCommand(circuitService)
-);
-
-GUICommandRegistry.register("drawWire", (circuitService, elementRegistry) =>
-    new DrawWireCommand(circuitService, elementRegistry)
-);
-
 
 // Configure RendererFactory
 const rendererFactory = new RendererFactory();

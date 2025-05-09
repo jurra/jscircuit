@@ -42,10 +42,9 @@ class ElementRegistryClass  {
 };
 
 const ElementRegistry = new ElementRegistryClass();
-Object.freeze(ElementRegistry); // Ensures immutability
+Object.freeze(ElementRegistry);
 
-export { ElementRegistry };
+export { ElementRegistry, ElementRegistryClass };
 export default ElementRegistry;
-
 
 
