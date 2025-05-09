@@ -3,9 +3,11 @@ import { GUICommand } from "./GUICommand.js";
 import { Position } from "../../domain/valueObjects/Position.js";
 
 export class DragElementCommand extends GUICommand {
-  constructor(circuitService) {
+  constructor(circuitService, wireSplitService) {
     super();
     this.circuitService = circuitService;
+    this.wireSplitService = wireSplitService;
+
     this.draggedElement = null;
 
     // Distinguishes "dragging entire shape" vs. "dragging a single node"
@@ -129,6 +131,7 @@ export class DragElementCommand extends GUICommand {
       // Update the node
       node.x = intendedX;
       node.y = intendedY;
+
     }
     // 2) Otherwise, we're dragging the entire shape
     else {
@@ -158,10 +161,19 @@ export class DragElementCommand extends GUICommand {
   }
 
   stop() {
+    if (this.draggedElement?.nodes?.length) {
+      for (const node of this.draggedElement.nodes) {
+        const pos = new Position(node.x, node.y);
+        const result = this.wireSplitService.trySplitAtNode(pos);
+        console.log("   → Split result:", result);
+      }
+    }
+
     this.draggedElement = null;
     this.draggingNodeIndex = null;
-    this.dragAxis = null; // reset axis for next time
+    this.dragAxis = null;
   }
+
 
   /**
    * If the user is dragging a wire, we see if they clicked near a node.

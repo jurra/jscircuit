@@ -25,7 +25,7 @@ GUICommandRegistry.register("addElement", (circuitService, circuitRenderer, elem
 );
 
 GUICommandRegistry.register("dragElement", (circuitService) =>
-    new DragElementCommand(circuitService)
+    new DragElementCommand(circuitService, wireSplitService)
 );
 
 
