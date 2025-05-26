@@ -74,7 +74,11 @@ describe("CircuitService Tests", () => {
         it("should handle deletion of a non-existent element gracefully", () => {
             circuitService.deleteElement("NonExistentID");
 
-            expect(emitSpy.calledWith("update", { type: "deleteElement", elementId: "NonExistentID" })).to.be.true;
+            // Action: Try deleting something that doesn't exist
+            expect(() => circuitService.deleteElement("NonExistentID")).to.not.throw();
+
+            // Assert: No update event should be emitted
+            expect(emitSpy.called).to.be.false;
         });
     });
 
