@@ -46,6 +46,13 @@ describe('QucatNetlistAdapter roundtrip test with CircuitService', () => {
             assert(netlistText.includes('W'), 'Exported file should contain wire lines');
         });
 
+        it('Should throw an error on unknown element short type', () => {
+            const BAD_EXPORT_PATH = './bad_element_test.txt';
+            fs.writeFileSync(BAD_EXPORT_PATH, `Z;0,0;1,1;10;weird`);
+            assert.throws(() => QucatNetlistAdapter.importFromFile(BAD_EXPORT_PATH), /Unknown element type/);
+            fs.unlinkSync(BAD_EXPORT_PATH); // cleanup
+        });
+
         it('Should import a file of netlist type', () => {
             const lines = fs.readFileSync(EXPORT_PATH, 'utf-8').trim().split('\n');
             assert(lines.length > 0, 'Netlist file should not be empty');
