@@ -24,4 +24,9 @@ export class CommandHistory {
         command.execute();
         this.history.push(command);
     }
+
+    clear() {
+        this.history = [];
+        this.future = [];
+      }
 }
