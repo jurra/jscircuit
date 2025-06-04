@@ -1,24 +1,32 @@
 // test/CommandHistory.test.js
 import { expect } from "chai";
 import { CommandHistory } from "../src/gui/commands/CommandHistory.js";
-import { createCircuitServiceFixture } from "./domain/CircuitServiceMock.js";
+import { createGUIEnvironmentFixture } from "./gui/GUIEnvironmentFixture.js";
 
-class DummyCommand {
-  constructor() {
-    this.executed = false;
-    this.undone = false;
-  }
-
-  execute() {
-    this.executed = true;
-  }
-
-  undo() {
-    this.undone = true;
-  }
-}
+// Mock Image class to prevent errors in tests
+global.Image = class {
+    constructor() {
+      this.onload = () => {};
+      this.src = '';
+    }
+};
 
 describe("CommandHistory", () => {
+  class DummyCommand {
+    constructor() {
+      this.executed = false;
+      this.undone = false;
+    }
+
+    execute() {
+      this.executed = true;
+    }
+
+    undo() {
+      this.undone = true;
+    }
+  }
+
   it("executes a command and stores it", () => {
     const history = new CommandHistory();
     const command = new DummyCommand();
@@ -69,25 +77,33 @@ describe("CommandHistory", () => {
     expect(() => history.undo()).not.to.throw();
     expect(() => history.redo()).not.to.throw();
   });
-
 });
 
 describe("Undo/Redo integration", () => {
-    it("adds, moves, and undoes correctly", () => {
-      const circuitService = createCircuitServiceFixture()
-      const history = new CommandHistory();
-  
-      const element = new Resistor("R1", [new Position(10, 10), new Position(60, 10)], null, new Properties());
-      const addCommand = new AddElementCommand(circuitService, element);
-  
-      history.executeCommand(addCommand);
-      expect(circuitService.getElements()).to.have.length(1);
-  
-      history.undo();
-      expect(circuitService.getElements()).to.have.length(0);
-  
-      history.redo();
-      expect(circuitService.getElements()).to.have.length(1);
-    });
+  let circuitService, getAddElementCommand;
+
+  beforeEach(async () => {
+    const env = await createGUIEnvironmentFixture();
+    circuitService = env.circuitService;
+    getAddElementCommand = env.getAddElementCommand;
   });
-  
+
+  afterEach(() => {
+    document.body.innerHTML = '';
+  });
+
+  it("adds, undoes, and redoes a resistor", () => {
+    const history = new CommandHistory();
+    const command = getAddElementCommand("resistor");
+
+    history.executeCommand(command);
+    expect(circuitService.getElements()).to.have.length(1);
+    expect(circuitService.getElements()[0].type).to.equal("resistor");
+
+    history.undo();
+    expect(circuitService.getElements()).to.have.length(0);
+
+    history.redo();
+    expect(circuitService.getElements()).to.have.length(1);
+  });
+});
