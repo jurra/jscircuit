@@ -59,8 +59,6 @@ export class GUIAdapter {
    * @param {...any} args - Arguments to pass to the command.
    */
   executeCommand(commandName, ...args) {
-    console.log(`Executing command: ${commandName} with args:`, args);
-
     const command = this.guiCommandRegistry.get(commandName, ...args);
     if (command) {
       this.commandHistory.executeCommand(command, ...args);
@@ -85,8 +83,6 @@ export class GUIAdapter {
         console.log(`Found button: ${button.id}, binding addElement command for ${elementType}`);
 
         button.addEventListener("click", () => {
-          console.log(`Executing addElement command for: ${elementType}`);
-
           const command = this.guiCommandRegistry.get(
             "addElement",
             this.circuitService,
@@ -114,8 +110,6 @@ export class GUIAdapter {
    * @param {...any} args - Arguments to pass to the command.
    */
   executeCommand(commandName, ...args) {
-    console.log(`Executing command: ${commandName} with args:`, args);
-
     const command = this.guiCommandRegistry.get(commandName, ...args);
     if (command) {
       this.commandHistory.executeCommand(command, ...args);

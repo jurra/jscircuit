@@ -1,4 +1,3 @@
-// /src/gui/commands/CommandHistory.js
 /**
  * @class CommandHistory
  * @description
@@ -11,69 +10,60 @@ export class CommandHistory {
    * Initializes a new instance of CommandHistory.
    * Sets up empty history and future stacks.
    */
-  constructor() {
-    /**
-     * @private
-     * @type {Array<{execute: Function, undo: Function}>}
-     */
-    this.history = [];
+    constructor() {
+      /**
+       * @private
+       * @type {Array<{execute: Function, undo: Function}>}
+       */
+      this.history = [];
+
+      /**
+       * @private
+      * @type {Array<{execute: Function, undo: Function}>}
+       */
+      this.future = [];
+    }
 
     /**
-     * @private
-     * @type {Array<{execute: Function, undo: Function}>}
+     * Executes a command and stores pre-command snapshot.
+     * Clears future stack.
+     *
+     * @param {Object} command
+     * @param {CircuitService} circuitService
      */
-    this.future = [];
-  }
+    executeCommand(command, circuitService) {
+      const snapshot = circuitService.exportState();
+      command.execute(circuitService);
+      this.history.push({ snapshot, command });
+      this.future = [];
+    }
 
-  /**
-   * Executes a command and stores it in the history stack.
-   * Clears the redo stack.
-   *
-   * @param {{execute: Function, undo: Function}} command - The command to execute.
-   * @param {...any} args - Arguments to pass to the command's `execute` method.
-   */
-  executeCommand(command, ...args) {
-    console.log(
-      `Executing command: ${command.constructor.name} with args:`,
-      args,
-    );
-    command.execute(...args);
-    this.history.push(command);
-    this.future = []; // Clear redo stack
-  }
+    /**
+     * Reverts to the previous circuit state.
+     * @param {CircuitService} circuitService
+     */
+    undo(circuitService) {
+      if (this.history.length === 0) return;
+      const { snapshot, command } = this.history.pop();
+      const redoSnapshot = circuitService.exportState();
+      circuitService.importState(snapshot);
+      this.future.push({ snapshot: redoSnapshot, command });
+    }
 
-  /**
-   * Undoes the most recently executed command.
-   * Moves it to the redo stack.
-   *
-   * Does nothing if the history stack is empty.
-   */
-  undo() {
-    if (this.history.length === 0) return;
-    const command = this.history.pop();
-    command.undo();
-    this.future.push(command);
-  }
+    /**
+     * Reapplies the previously undone command.
+     * @param {CircuitService} circuitService
+     */
+    redo(circuitService) {
+      if (this.future.length === 0) return;
+      const { snapshot, command } = this.future.pop();
+      const undoSnapshot = circuitService.exportState();
+      circuitService.importState(snapshot);
+      this.history.push({ snapshot: undoSnapshot, command });
+    }
 
-  /**
-   * Redoes the most recently undone command.
-   * Moves it back to the history stack.
-   *
-   * Does nothing if the future stack is empty.
-   */
-  redo() {
-    if (this.future.length === 0) return;
-    const command = this.future.pop();
-    command.execute();
-    this.history.push(command);
+    clear() {
+      this.history = [];
+      this.future = [];
+    }
   }
-
-  /**
-   * Clears both history and future stacks.
-   * Useful when resetting circuit state or loading a new project.
-   */
-  clear() {
-    this.history = [];
-    this.future = [];
-  }
-}

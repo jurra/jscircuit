@@ -34,8 +34,6 @@ export class AddElementCommand extends GUICommand {
    * @param {Array} nodes - An array of objects with {x, y} coordinates.
    */
   execute(nodes = null) {
-    console.log(`Executing AddElementCommand for: ${this.elementType}`);
-
     const factory = this.elementRegistry.get(this.elementType);
     if (!factory) {
       console.error(
@@ -67,7 +65,6 @@ export class AddElementCommand extends GUICommand {
 
     // Create the element via the factory.
     const element = factory(undefined, positions, null, {});
-    console.log("Element created with snapped nodes:", element);
 
     // Add the element to the circuit.
     this.circuitService.addElement(element);
