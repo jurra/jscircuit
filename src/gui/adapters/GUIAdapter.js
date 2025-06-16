@@ -26,13 +26,15 @@ import { CommandHistory } from "../commands/CommandHistory.js";
  */
 export class GUIAdapter {
   /**
+   * @param {HTMLElement} controls - The controls container element for adding components.
    * @param {HTMLCanvasElement} canvas - The canvas element for rendering the circuit.
    * @param {CircuitService} circuitService - The service managing circuit logic.
    * @param {Object} elementRegistry - The registry of circuit elements.
    * @param {RendererFactory} rendererFactory - The factory for creating element renderers.
    * @param {GUICommandRegistry} guiCommandRegistry - The factory for creating commands.
    */
-  constructor(canvas, circuitService, elementRegistry, rendererFactory, guiCommandRegistry) {
+  constructor(controls, canvas, circuitService, elementRegistry, rendererFactory, guiCommandRegistry) {
+    this.controls = controls;
     this.canvas = canvas;
     this.circuitService = circuitService;
     this.elementRegistry = elementRegistry;
@@ -75,7 +77,7 @@ export class GUIAdapter {
       const buttonName = `add${elementType}`;
       console.log(`Searching for button: ${buttonName}`);
 
-      const button = document.getElementById(buttonName);
+      const button = this.controls.querySelector(`#${buttonName}`);
       if (button) {
         console.log(`Found button: ${button.id}, binding addElement command for ${elementType}`);
 

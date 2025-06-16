@@ -5,10 +5,12 @@ import { setupCommands, ElementRegistry, GUICommandRegistry, rendererFactory } f
 import { Circuit } from '../../src/domain/aggregates/Circuit.js';
 import { CircuitService } from '../../src/application/CircuitService.js';
 import { GUIAdapter } from '../../src/gui/adapters/GUIAdapter.js';
+import { createMockControls } from './controlsFixture.js';
 import { createMockCanvas } from './canvasFixture.js';
 import { setupJsdom } from '../setup/jsdomSetup.js';
 
 describe('GUIAdapter Tests', () => {
+    let controls;
     let canvas;
     let guiAdapter;
     let circuitService;
@@ -23,11 +25,12 @@ describe('GUIAdapter Tests', () => {
             document.body.appendChild(button);
         });
 
+        controls = createMockControls();
         canvas = createMockCanvas();
         const circuit = new Circuit();
         circuitService = new CircuitService(circuit, ElementRegistry);
 
-        guiAdapter = new GUIAdapter(canvas, circuitService, ElementRegistry, rendererFactory, GUICommandRegistry);
+        guiAdapter = new GUIAdapter(controls, canvas, circuitService, ElementRegistry, rendererFactory, GUICommandRegistry);
 
         // Await the command registration here
         await setupCommands(circuitService, guiAdapter.circuitRenderer);
@@ -40,6 +43,7 @@ describe('GUIAdapter Tests', () => {
 });
 
 describe('GUIAdapter Tests', () => {
+    let controls;
     let canvas;
     let guiAdapter;
 
@@ -54,11 +58,12 @@ describe('GUIAdapter Tests', () => {
         });
 
         // Mock canvas element
+        controls = createMockControls();
         canvas = createMockCanvas();
 
         const circuit = new Circuit();
         const circuitService = new CircuitService(circuit, ElementRegistry);
-        guiAdapter = new GUIAdapter(canvas, circuitService, ElementRegistry, rendererFactory, GUICommandRegistry);
+        guiAdapter = new GUIAdapter(controls, canvas, circuitService, ElementRegistry, rendererFactory, GUICommandRegistry);
 
         // Await the command registration here
         await setupCommands(circuitService, guiAdapter.circuitRenderer);
@@ -101,7 +106,7 @@ describe('GUIAdapter Tests', () => {
         // Verify single event listener registration
         expect(resistorButton.addEventListener.callCount).to.equal(1);
 
-        // Simulates a real DOM clicc
+        // Simulates a real DOM click
         resistorButton.click();
 
         // Verify that the circuitService we are using is the same as the one in GUIAdapter

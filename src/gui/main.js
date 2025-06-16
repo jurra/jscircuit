@@ -13,9 +13,10 @@ import {
 const circuit = new Circuit();
 const circuitService = new CircuitService(circuit, ElementRegistry);
 
-// Canvas
+// Controls and canvas
+const controls = document.querySelector(".controls");
 const canvas = document.getElementById("circuitCanvas");
-const guiAdapter = new GUIAdapter(canvas, circuitService, ElementRegistry, rendererFactory, GUICommandRegistry);
+const guiAdapter = new GUIAdapter(controls, canvas, circuitService, ElementRegistry, rendererFactory, GUICommandRegistry);
 
 // Wait for commands to be set up
 setupCommands(circuitService, guiAdapter.circuitRenderer).then(() => {
