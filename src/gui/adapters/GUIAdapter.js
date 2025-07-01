@@ -1,53 +1,71 @@
 /**
  * @class GUIAdapter
  * @description
- * The `GUIAdapter` serves as the bridge between the user interface (UI) and the underlying application logic.
- * Instead of directly modifying the circuit, it retrieves and executes commands dynamically.
+ * The `GUIAdapter` bridges the UI and application logic. It transforms user input
+ * into domain operations via command patterns and ensures state changes are traceable.
  *
  * **Core Concepts**:
- * - **Event-Driven Execution**: UI interactions trigger commands rather than modifying state directly.
- * - **Dynamic Command Injection**: Commands are managed by `GUICommandRegistry` and executed via `CommandHistory`.
- * - **Separation of Concerns**: The GUI delegates all logic to `CircuitService` via the command system.
+ * - **Event-Driven Execution**: User actions trigger command objects.
+ * - **Command Injection**: Commands are dynamically created via `GUICommandRegistry`.
+ * - **Undo/Redo**: Commands are managed and reversible via `CommandHistory`.
  *
  * **Responsibilities**:
- * 1. **Initialization**:
- *    - Renders the circuit and **binds UI htmlelment controls/buttons dynamically**.
- * 2. **Command Execution**:
- *    - Retrieves commands from `GUICommandRegistry` and executes them.
- * 3. **Undo/Redo Support**:
- *    - Ensures that every executed command is trackable via `CommandHistory`.
- *
- * @example
- * const guiAdapter = new GUIAdapter(canvas, circuitService, elementRegistry);
- * guiAdapter.initialize();
+ * 1. Render circuit elements via `CircuitRenderer`.
+ * 2. Bind UI controls and buttons to domain commands.
+ * 3. Coordinate undo/redo functionality.
  */
 import { CircuitRenderer } from "../renderers/CircuitRenderer.js";
 import { CommandHistory } from "../commands/CommandHistory.js";
 
 export class GUIAdapter {
-  constructor(controls, canvas, circuitService, elementRegistry, rendererFactory, guiCommandRegistry) {
+  /**
+   * @constructor
+   * @param {HTMLElement} controls - DOM container for command buttons.
+   * @param {HTMLCanvasElement} canvas - Canvas for circuit rendering.
+   * @param {CircuitService} circuitService - Core domain service.
+   * @param {ElementRegistry} elementRegistry - Registry of circuit components.
+   * @param {RendererFactory} rendererFactory - Factory for creating renderers.
+   * @param {GUICommandRegistry} guiCommandRegistry - Registry for GUI commands.
+   */
+  constructor(
+    controls,
+    canvas,
+    circuitService,
+    elementRegistry,
+    rendererFactory,
+    guiCommandRegistry,
+  ) {
     this.controls = controls;
     this.canvas = canvas;
     this.circuitService = circuitService;
     this.elementRegistry = elementRegistry;
-    this.circuitRenderer = new CircuitRenderer(canvas, circuitService, rendererFactory);
+    this.circuitRenderer = new CircuitRenderer(
+      canvas,
+      circuitService,
+      rendererFactory,
+    );
     this.guiCommandRegistry = guiCommandRegistry;
     this.commandHistory = new CommandHistory();
-    this.dragCommand = null;
+    this.activeCommand = null;
     this.hasDragged = false;
     this.mouseDownPos = { x: 0, y: 0 };
-    this.activeCommand = null;
   }
 
+  /**
+   * Initializes the GUI, binds controls, sets up canvas listeners, and renders.
+   */
   initialize() {
-    console.log("GUIAdapter initialized");
     this.circuitRenderer.render();
     this.bindUIControls();
     this.setupCanvasInteractions();
-
     this.circuitService.on("update", () => this.circuitRenderer.render());
   }
 
+  /**
+   * Executes a named command through the command registry and stores it in history.
+   * @param {string} commandName - Identifier for the command.
+   * @param {...any} args - Arguments passed to the command.
+   */
   executeCommand(commandName, ...args) {
     const command = this.guiCommandRegistry.get(commandName, ...args);
     if (command) {
@@ -57,29 +75,28 @@ export class GUIAdapter {
     }
   }
 
+  /**
+   * Binds UI buttons to element creation and undo/redo commands.
+   */
   bindUIControls() {
     this.elementRegistry.getTypes().forEach((elementType) => {
       const buttonName = `add${elementType}`;
-      console.log(`Searching for button: ${buttonName}`);
-
       const oldButton = this.controls.querySelector(`#${buttonName}`);
       if (oldButton) {
         const button = oldButton.cloneNode(true);
         oldButton.replaceWith(button);
 
-        console.log(`Found button: ${button.id}, binding addElement command for ${elementType}`);
         button.addEventListener("click", () => {
           const command = this.guiCommandRegistry.get(
             "addElement",
             this.circuitService,
             this.circuitRenderer,
             this.elementRegistry,
-            elementType
+            elementType,
           );
 
           if (command) {
             this.commandHistory.executeCommand(command, this.circuitService);
-            console.log(`Command 'addElement' executed for ${elementType}`);
           } else {
             console.warn(`Command 'addElement' not found for ${elementType}`);
           }
@@ -89,29 +106,36 @@ export class GUIAdapter {
       }
     });
 
-    const undoButton = this.controls.querySelector("#undoButton");
-    if (undoButton) {
-      undoButton.replaceWith(undoButton.cloneNode(true));
-      this.controls.querySelector("#undoButton").addEventListener("click", () => {
-        this.commandHistory.undo(this.circuitService);
-        this.circuitRenderer.render();
-      });
-    } else {
-      console.warn("Undo button not found");
-    }
+    this.bindUndoRedo("#undoButton", () =>
+      this.commandHistory.undo(this.circuitService),
+    );
+    this.bindUndoRedo("#redoButton", () =>
+      this.commandHistory.redo(this.circuitService),
+    );
+  }
 
-    const redoButton = this.controls.querySelector("#redoButton");
-    if (redoButton) {
-      redoButton.replaceWith(redoButton.cloneNode(true));
-      this.controls.querySelector("#redoButton").addEventListener("click", () => {
-        this.commandHistory.redo(this.circuitService);
+  /**
+   * Helper for binding undo/redo buttons.
+   * @param {string} selector - DOM selector for the button.
+   * @param {Function} action - Function to execute on click.
+   */
+  bindUndoRedo(selector, action) {
+    const button = this.controls.querySelector(selector);
+    if (button) {
+      const clone = button.cloneNode(true);
+      button.replaceWith(clone);
+      clone.addEventListener("click", () => {
+        action();
         this.circuitRenderer.render();
       });
     } else {
-      console.warn("Redo button not found");
+      console.warn(`${selector} not found`);
     }
   }
 
+  /**
+   * Sets up mouse events for interaction on the canvas: zoom, drag, draw.
+   */
   setupCanvasInteractions() {
     this.canvas.addEventListener("wheel", (event) => {
       event.preventDefault();
@@ -128,17 +152,20 @@ export class GUIAdapter {
 
       if (event.button === 0) {
         const { offsetX, offsetY } = this.getTransformedMousePosition(event);
-
         const element = this.findElementAt(offsetX, offsetY);
-        if (element) {
-          this.activeCommand = this.guiCommandRegistry.get("dragElement", this.circuitService);
-        } else {
-          this.activeCommand = this.guiCommandRegistry.get("drawWire", this.circuitService, this.elementRegistry);
-        }
+
+        this.activeCommand = element
+          ? this.guiCommandRegistry.get("dragElement", this.circuitService)
+          : this.guiCommandRegistry.get(
+              "drawWire",
+              this.circuitService,
+              this.elementRegistry,
+            );
 
         if (this.activeCommand) {
-          this.activeCommand.beforeSnapshot = this.circuitService.exportState();
+          const before = this.circuitService.exportState(); //  snapshot before changes
           this.activeCommand.start(offsetX, offsetY);
+          this.activeCommand.beforeSnapshot = before;
         }
 
         this.hasDragged = false;
@@ -149,14 +176,11 @@ export class GUIAdapter {
     this.canvas.addEventListener("mousemove", (event) => {
       if (this.activeCommand) {
         const { offsetX, offsetY } = this.getTransformedMousePosition(event);
-
         const dx = offsetX - this.mouseDownPos.x;
         const dy = offsetY - this.mouseDownPos.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        if (distance > 2) {
+        if (Math.sqrt(dx * dx + dy * dy) > 2) {
           this.hasDragged = true;
         }
-
         this.activeCommand.move(offsetX, offsetY);
       }
     });
@@ -168,19 +192,36 @@ export class GUIAdapter {
       }
 
       if (this.activeCommand) {
+        // Make sure snapshot was taken before any state changes
+        const before = this.activeCommand.beforeSnapshot;
+
         if (!this.hasDragged && this.activeCommand.cancel) {
           this.activeCommand.cancel();
         } else {
           this.activeCommand.stop();
-          const before = this.activeCommand.beforeSnapshot;
           const after = this.circuitService.exportState();
 
-          const snapshotCommand = {
-            execute: () => this.circuitService.importState(after),
-            undo: () => this.circuitService.importState(before),
-          };
+          console.log("[GUI Adapter] State before:", JSON.stringify(before, null, 2));
+          console.log("[GUI Adapter] State after :", JSON.stringify(after, null, 2));
 
-          this.commandHistory.executeCommand(snapshotCommand, this.circuitService);
+          if (this.hasStateChanged(before, after)) {
+            console.log("[GUIAdapter] State changed — pushing to history.");
+            this.circuitService.importState(before);
+
+            const snapshotCommand = {
+              execute: () => this.circuitService.importState(after),
+              undo: () => this.circuitService.importState(before),
+            };
+
+            this.commandHistory.executeCommand(
+              snapshotCommand,
+              this.circuitService,
+            );
+          } else {
+            console.warn(
+              "[GUIAdapter] No state change — skipping history push.",
+            );
+          }
         }
 
         this.activeCommand = null;
@@ -188,43 +229,79 @@ export class GUIAdapter {
     });
   }
 
+  /**
+   * Converts screen coordinates to world coordinates.
+   * @param {MouseEvent} event
+   * @returns {{offsetX: number, offsetY: number}}
+   */
   getTransformedMousePosition(event) {
     const rect = this.canvas.getBoundingClientRect();
     return {
-      offsetX: (event.clientX - rect.left - this.circuitRenderer.offsetX) / this.circuitRenderer.scale,
-      offsetY: (event.clientY - rect.top - this.circuitRenderer.offsetY) / this.circuitRenderer.scale,
+      offsetX:
+        (event.clientX - rect.left - this.circuitRenderer.offsetX) /
+        this.circuitRenderer.scale,
+      offsetY:
+        (event.clientY - rect.top - this.circuitRenderer.offsetY) /
+        this.circuitRenderer.scale,
     };
   }
 
+  /**
+   * Finds the first element at the given world coordinates.
+   * @param {number} worldX
+   * @param {number} worldY
+   * @returns {Element|null}
+   */
   findElementAt(worldX, worldY) {
-    for (const element of this.circuitService.getElements()) {
-      if (this.isInsideElement(worldX, worldY, element)) {
-        return element;
-      }
-    }
-    return null;
+    return (
+      this.circuitService
+        .getElements()
+        .find((el) => this.isInsideElement(worldX, worldY, el)) || null
+    );
   }
 
+  /**
+   * Determines if a point is inside or near a circuit element.
+   * @param {number} x
+   * @param {number} y
+   * @param {Element} element
+   * @returns {boolean}
+   */
   isInsideElement(x, y, element) {
     if (element.nodes.length < 2) return false;
-
     const aura = 10;
     const [start, end] = element.nodes;
     const dx = end.x - start.x;
     const dy = end.y - start.y;
     const length = Math.hypot(dx, dy);
-    if (length < 1e-6) {
-      return Math.hypot(x - start.x, y - start.y) <= aura;
-    }
-    const distance = Math.abs(dy * x - dx * y + end.x * start.y - end.y * start.x) / length;
+    if (length < 1e-6) return Math.hypot(x - start.x, y - start.y) <= aura;
+    const distance =
+      Math.abs(dy * x - dx * y + end.x * start.y - end.y * start.x) / length;
     if (distance > aura) return false;
-
     const minX = Math.min(start.x, end.x) - aura;
     const maxX = Math.max(start.x, end.x) + aura;
     const minY = Math.min(start.y, end.y) - aura;
     const maxY = Math.max(start.y, end.y) + aura;
-    if (x < minX || x > maxX || y < minY || y > maxY) return false;
+    return !(x < minX || x > maxX || y < minY || y > maxY);
+  }
 
-    return true;
+  /**
+   * Compares two circuit snapshots to determine if a meaningful change occurred.
+   * @param {Object} before
+   * @param {Object} after
+   * @returns {boolean}
+   */
+  hasStateChanged(before, after) {
+    before = JSON.parse(before);
+    after = JSON.parse(after);
+    if (!before || !after) return true;
+    if (before.elements.length !== after.elements.length) return true;
+    for (let i = 0; i < before.elements.length; i++) {
+      const a = before.elements[i];
+      const b = after.elements[i];
+      if (a.id !== b.id || a.type !== b.type) return true;
+      if (JSON.stringify(a.nodes) !== JSON.stringify(b.nodes)) return true;
+    }
+    return false;
   }
 }

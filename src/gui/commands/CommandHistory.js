@@ -37,14 +37,13 @@ export class CommandHistory {
       this.history.push({ snapshot, command });
       this.future = [];
     }
-
     /**
      * Reverts to the previous circuit state.
      * @param {CircuitService} circuitService
      */
     undo(circuitService) {
       if (this.history.length === 0) return;
-      const { snapshot, command } = this.history.pop();
+      const { snapshot, command } = this.history.pop(); // Pop the last command
       const redoSnapshot = circuitService.exportState();
       circuitService.importState(snapshot);
       this.future.push({ snapshot: redoSnapshot, command });
