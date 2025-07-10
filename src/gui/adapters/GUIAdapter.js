@@ -49,6 +49,7 @@ export class GUIAdapter {
     this.activeCommand = null;
     this.hasDragged = false;
     this.mouseDownPos = { x: 0, y: 0 };
+    this.placingElement = null;
   }
 
   /**
@@ -136,98 +137,135 @@ export class GUIAdapter {
   /**
    * Sets up mouse events for interaction on the canvas: zoom, drag, draw.
    */
-  setupCanvasInteractions() {
-    this.canvas.addEventListener("wheel", (event) => {
-      event.preventDefault();
-      this.circuitRenderer.zoom(event);
-    });
+setupCanvasInteractions() {
+  this.canvas.addEventListener("wheel", (event) => {
+    event.preventDefault();
+    this.circuitRenderer.zoom(event);
+  });
 
-    this.canvas.addEventListener("mousedown", (event) => {
-      if (event.button === 1) {
-        this.canvas.style.cursor = "grabbing";
-        this.panStartX = event.clientX - this.circuitRenderer.offsetX;
-        this.panStartY = event.clientY - this.circuitRenderer.offsetY;
-        return;
-      }
+  this.canvas.addEventListener("mousedown", (event) => {
+    if (event.button === 1) {
+      this.canvas.style.cursor = "grabbing";
+      this.panStartX = event.clientX - this.circuitRenderer.offsetX;
+      this.panStartY = event.clientY - this.circuitRenderer.offsetY;
+      return;
+    }
 
-      if (event.button === 0) {
-        const { offsetX, offsetY } = this.getTransformedMousePosition(event);
-        const element = this.findElementAt(offsetX, offsetY);
+    const { offsetX, offsetY } = this.getTransformedMousePosition(event);
 
-        this.activeCommand = element
-          ? this.guiCommandRegistry.get("dragElement", this.circuitService)
-          : this.guiCommandRegistry.get(
-              "drawWire",
-              this.circuitService,
-              this.elementRegistry,
-            );
+    // If placing an element, finalize its position on left click
+    if (event.button === 0 && this.placingElement) {
+      const snappedX = Math.round(offsetX / 10) * 10;
+      const snappedY = Math.round(offsetY / 10) * 10;
+      const width = 60;
 
-        if (this.activeCommand) {
-          const before = this.circuitService.exportState(); //  snapshot before changes
-          this.activeCommand.start(offsetX, offsetY);
-          this.activeCommand.beforeSnapshot = before;
-        }
+      this.placingElement.nodes[0].x = snappedX - width / 2;
+      this.placingElement.nodes[0].y = snappedY;
+      this.placingElement.nodes[1].x = snappedX + width / 2;
+      this.placingElement.nodes[1].y = snappedY;
 
-        this.hasDragged = false;
-        this.mouseDownPos = { x: offsetX, y: offsetY };
-      }
-    });
+      this.circuitService.emit("update", {
+        type: "finalizePlacement",
+        element: this.placingElement,
+      });
 
-    this.canvas.addEventListener("mousemove", (event) => {
-      if (this.activeCommand) {
-        const { offsetX, offsetY } = this.getTransformedMousePosition(event);
-        const dx = offsetX - this.mouseDownPos.x;
-        const dy = offsetY - this.mouseDownPos.y;
-        if (Math.sqrt(dx * dx + dy * dy) > 2) {
-          this.hasDragged = true;
-        }
-        this.activeCommand.move(offsetX, offsetY);
-      }
-    });
+      this.placingElement = null;
+      this.circuitRenderer.render();
+      return;
+    }
 
-    this.canvas.addEventListener("mouseup", (event) => {
-      if (event.button === 1) {
-        this.canvas.style.cursor = "default";
-        return;
-      }
+    // Regular command start
+    if (event.button === 0) {
+      const element = this.findElementAt(offsetX, offsetY);
+
+      this.activeCommand = element
+        ? this.guiCommandRegistry.get("dragElement", this.circuitService)
+        : this.guiCommandRegistry.get(
+            "drawWire",
+            this.circuitService,
+            this.elementRegistry,
+          );
 
       if (this.activeCommand) {
-        // Make sure snapshot was taken before any state changes
-        const before = this.activeCommand.beforeSnapshot;
-
-        if (!this.hasDragged && this.activeCommand.cancel) {
-          this.activeCommand.cancel();
-        } else {
-          this.activeCommand.stop();
-          const after = this.circuitService.exportState();
-
-          console.log("[GUI Adapter] State before:", JSON.stringify(before, null, 2));
-          console.log("[GUI Adapter] State after :", JSON.stringify(after, null, 2));
-
-          if (this.hasStateChanged(before, after)) {
-            console.log("[GUIAdapter] State changed — pushing to history.");
-            this.circuitService.importState(before);
-
-            const snapshotCommand = {
-              execute: () => this.circuitService.importState(after),
-              undo: () => this.circuitService.importState(before),
-            };
-
-            this.commandHistory.executeCommand(
-              snapshotCommand,
-              this.circuitService,
-            );
-          } else {
-            console.warn(
-              "[GUIAdapter] No state change — skipping history push.",
-            );
-          }
-        }
-
-        this.activeCommand = null;
+        const before = this.circuitService.exportState();
+        this.activeCommand.start(offsetX, offsetY);
+        this.activeCommand.beforeSnapshot = before;
       }
-    });
-  }
+
+      this.hasDragged = false;
+      this.mouseDownPos = { x: offsetX, y: offsetY };
+    }
+  });
+
+  this.canvas.addEventListener("mousemove", (event) => {
+    const { offsetX, offsetY } = this.getTransformedMousePosition(event);
+
+    // Live update for placing element
+    if (this.placingElement) {
+      const snappedX = Math.round(offsetX / 10) * 10;
+      const snappedY = Math.round(offsetY / 10) * 10;
+      const width = 60;
+
+      this.placingElement.nodes[0].x = snappedX - width / 2;
+      this.placingElement.nodes[0].y = snappedY;
+      this.placingElement.nodes[1].x = snappedX + width / 2;
+      this.placingElement.nodes[1].y = snappedY;
+
+      this.circuitService.emit("update", {
+        type: "movePreview",
+        element: this.placingElement,
+      });
+
+      return;
+    }
+
+    // Regular move
+    if (this.activeCommand) {
+      const dx = offsetX - this.mouseDownPos.x;
+      const dy = offsetY - this.mouseDownPos.y;
+      if (Math.sqrt(dx * dx + dy * dy) > 2) {
+        this.hasDragged = true;
+      }
+      this.activeCommand.move(offsetX, offsetY);
+    }
+  });
+
+  this.canvas.addEventListener("mouseup", (event) => {
+    if (event.button === 1) {
+      this.canvas.style.cursor = "default";
+      return;
+    }
+
+    if (this.activeCommand) {
+      const before = this.activeCommand.beforeSnapshot;
+
+      if (!this.hasDragged && this.activeCommand.cancel) {
+        this.activeCommand.cancel();
+      } else {
+        this.activeCommand.stop();
+        const after = this.circuitService.exportState();
+
+        if (this.hasStateChanged(before, after)) {
+          this.circuitService.importState(before);
+
+          const snapshotCommand = {
+            execute: () => this.circuitService.importState(after),
+            undo: () => this.circuitService.importState(before),
+          };
+
+          this.commandHistory.executeCommand(snapshotCommand, this.circuitService);
+        }
+      }
+
+      this.activeCommand = null;
+    }
+  });
+
+  // Listen to the element placement event
+  this.circuitService.on("startPlacing", ({ element }) => {
+    this.placingElement = element;
+  });
+}
 
   /**
    * Converts screen coordinates to world coordinates.
