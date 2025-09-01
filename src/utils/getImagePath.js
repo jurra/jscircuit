@@ -1,30 +1,32 @@
 /**
  * @file getImagePath.js
  * @description
- * Universal delegator that loads either the browser or Node implementation
- * of `getImagePath` dynamically, based on runtime environment.
+ * Resolves image path for circuit element icons based on type and UI variant.
+ * Compatible with both browser (using import.meta.url) and Node test environments (via `mock` flag).
+ *
+ * @example
+ * getImagePath("resistor")                 // → file:///.../R.png
+ * getImagePath("resistor", "hover")       // → file:///.../R_hover.png
+ * getImagePath("resistor", "hover", { mock: true }) // → /assets/R_hover.png
  */
 
 /**
- * Dynamically loads the correct implementation of getImagePath
- * depending on whether the code is running in the browser or Node.
+ * Resolves image path based on circuit element type and optional UI variant.
  *
- * @param {string} type - Component type (e.g. "resistor").
- * @param {string} [variant="default"] - Variant ("hover", "selected", etc.)
- * @returns {Promise<string>} - The resolved asset path or mock path.
+ * @param {string} type - Element type (e.g., "resistor", "capacitor").
+ * @param {string} [variant="default"] - UI variant (e.g., "hover", "selected").
+ * @param {Object} [options]
+ * @param {boolean} [options.mock=false] - If true, returns a simplified mock path for test environments.
+ * @returns {string} Path to the asset (absolute in browser, mock in Node).
  */
-export async function getImagePath(type, variant = "default") {
-  const isBrowser = typeof window !== "undefined" && typeof document !== "undefined";
-
-  const module = isBrowser
-    ? await import('./getImagePath.browser.js')
-    : await import('./getImagePath.node.js');
-
-  // Check which module was imported to see if its browser or Node version
-  if (module.getImagePath.browser) {
-    console.log("Using browser version");
-  } else {
-    console.log("Using Node version");
+export function getImagePath(type, variant = "default", { mock = false } = {}) {
+  if (!type || typeof type !== "string") {
+    throw new Error("Invalid or unknown type");
   }
-  return module.getImagePath(type, variant);
+
+  const base = type.charAt(0).toUpperCase();
+  const suffix = variant === "default" ? "" : `_${variant}`;
+  const path = `/assets/${base}${suffix}.png`;
+
+  return mock ? path : new URL(path, import.meta.url).href;
 }

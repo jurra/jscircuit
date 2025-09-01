@@ -1,12 +1,11 @@
 import { ElementRenderer } from "./ElementRenderer.js";
 import { Position } from "../../domain/valueObjects/Position.js";
-import { GetImage } from "./GetImage.js";
+import { getImagePath } from "../../utils/getImagePath.js";
 
 export class ResistorRenderer extends ElementRenderer {
   constructor(context) {
     super(context);
     this.image = new Image();
-    this.image.src = GetImage("R.png");
     this.imageLoaded = false;
 
     this.image.onload = () => {
@@ -16,6 +15,13 @@ export class ResistorRenderer extends ElementRenderer {
     // Define proper dimensions for the resistor image
     this.SCALED_WIDTH = 50; // Adjusted width for display
     this.SCALED_HEIGHT = 20; // Adjusted height for display
+  }
+
+  async init() {
+    this.image.src = await getImagePath("resistor");
+    this.image.onload = () => {
+      this.imageLoaded = true;
+    };
   }
 
   renderElement(resistor) {
