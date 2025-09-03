@@ -1,0 +1,68 @@
+menus:
+  - label: File
+    items:
+      - id: file.open
+        label: Open
+        shortcut: Ctrl+O
+      - id: file.save
+        label: Save
+        shortcut: Ctrl+S
+      - type: separator
+      - id: file.exit
+        label: Exit
+        shortcut: Ctrl+Q
+
+  - label: Edit
+    items:
+      - id: edit.undo
+        label: Undo
+        shortcut: Ctrl+Z
+      - id: edit.redo
+        label: Redo
+        shortcut: Ctrl+Y
+      - type: separator
+      - id: edit.cut
+        label: Cut
+        shortcut: Ctrl+X
+        disabled: true
+      - id: edit.copy
+        label: Copy
+        shortcut: Ctrl+C
+        disabled: true
+      - id: edit.paste
+        label: Paste
+        shortcut: Ctrl+V
+        disabled: true
+      - type: separator
+      - id: edit.selectAll
+        label: Select all
+        shortcut: Ctrl+A
+      - type: separator
+      - id: edit.delete
+        label: Delete
+        shortcut: Del
+      - id: edit.rotate
+        label: Rotate
+        shortcut: Drag+Arrows
+        disabled: true
+      - id: edit.deleteAll
+        label: Delete all
+
+  - label: Insert
+    items:
+      - id: insert.resistor
+        label: Resistor
+      - id: insert.wire
+        label: Wire
+
+  - label: View
+    items:
+      - id: view.zoomIn
+        label: Zoom in
+        shortcut: Ctrl+scroll
+      - id: view.zoomOut
+        label: Zoom out
+        shortcut: Ctrl+scroll
+      - id: view.recenter
+        label: Re-center
+        shortcut: Ctrl+R

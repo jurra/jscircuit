@@ -7,7 +7,7 @@
     <style>
         canvas {
             border: 1px solid #ccc;
-            margin-top: 20px;
+            /* margin-top: 20px; */
         }
         .controls {
             margin-top: 10px;
@@ -16,13 +16,15 @@
 </head>
 <body>
     <h1>Circuit Designer</h1>
-    <div class="controls">
-        <button id="addResistor">Add Resistor</button>
-        <button id="addWire">Add Wire</button>
-        <button id="undoButton">&lt;</button>
-        <button id="redoButton">&gt;</button>
+    <div class="circuit-stage">
+        <div class="menubar controls" id="menubar"></div>
+        <canvas id="circuitCanvas"></canvas>
     </div>
-    <canvas id="circuitCanvas" width="800" height="600"></canvas>
     <script type="module" src="./static/main.js"></script>
+    <style>
+        /* Reserve layout, but keep pixels hidden until ready */
+        #circuitCanvas { opacity: 0; transition: opacity 120ms ease; }
+        .circuit-stage.ready #circuitCanvas { opacity: 1; }
+    </style>
 </body>
 </html>
