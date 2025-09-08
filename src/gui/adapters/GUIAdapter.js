@@ -156,9 +156,7 @@ export class GUIAdapter {
     this._onWheel = (event) => {
       if (!event.ctrlKey) return;
       event.preventDefault();
-      // Positive deltaY → zoom out; negative → zoom in
-      const step = Math.sign(event.deltaY) > 0 ? +1 : -1;
-      this._exec({ kind: "renderer", op: "zoomStep", args: [step] });
+      this._exec(event);
       this.circuitRenderer.render();
     };
     this.canvas.addEventListener("wheel", this._onWheel, { passive: false });
