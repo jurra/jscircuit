@@ -1,4 +1,4 @@
-import menuConfig from "../../dist/static/menu.config.json" assert { type: "json" };
+import menuConfig from "../../dist/static/menu.config.json" with { type: "json" };
 
 /** id -> action spec (from YAML/JSON) */
 export const ACTIONS = Object.fromEntries(
