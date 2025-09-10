@@ -8,13 +8,8 @@ export async function initMenu(configUrl = "./static/menu.config.json") {
   const menu = new MenuBar(document.getElementById("menubar"));
   menu.renderFromConfig(cfg);
 
-  // Optional hotkeys for now:
-  const key = e => (e.ctrlKey||e.metaKey ? "Ctrl+" : "") + (e.key.length===1 ? e.key.toUpperCase() : e.key);
-  const map = { "Ctrl+Z":"edit.undo", "Ctrl+Y":"edit.redo", "Ctrl+A":"edit.selectAll", "Delete":"edit.delete", "Ctrl+R":"view.recenter" };
-  document.addEventListener("keydown", e => {
-    const id = map[key(e)];
-    if (id){ e.preventDefault(); document.dispatchEvent(new CustomEvent("ui:action",{ detail:{ id } })); }
-  });
+  // Note: Keyboard shortcuts are handled by GUIAdapter.bindShortcuts()
+  // to avoid double-binding. The menu only handles click events.
 
   return menu; // so you can enable/disable items later: menu.update("edit.copy",{disabled:false})
 }
