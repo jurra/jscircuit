@@ -61,16 +61,29 @@ export class JunctionRenderer extends ElementRenderer {
 
         // Draw the junction representation
         if (this.imageLoaded && this.image) {
-            // Draw the junction image centered on the midpoint
+            // Maintain aspect ratio and center the image
+            const aspectRatio = this.image.naturalWidth / this.image.naturalHeight;
+            let drawWidth, drawHeight;
+            
+            if (aspectRatio > 1) {
+                // Image is wider than tall
+                drawWidth = this.SCALED_WIDTH;
+                drawHeight = this.SCALED_WIDTH / aspectRatio;
+            } else {
+                // Image is taller than wide or square
+                drawHeight = this.SCALED_HEIGHT;
+                drawWidth = this.SCALED_HEIGHT * aspectRatio;
+            }
+            
             this.context.drawImage(
                 this.image,
-                midX - this.SCALED_WIDTH / 2,
-                midY - this.SCALED_HEIGHT / 2,
-                this.SCALED_WIDTH,
-                this.SCALED_HEIGHT,
+                midX - drawWidth / 2,
+                midY - drawHeight / 2,
+                drawWidth,
+                drawHeight,
             );
         } else if (!this.imageLoading) {
-            // Fallback: Draw junction symbol (solid circle)
+            // Fallback: Draw junction symbol (proportionate X)
             this.renderFallback(junction, midX, midY);
         }
 
@@ -84,14 +97,23 @@ export class JunctionRenderer extends ElementRenderer {
     }
 
     renderFallback(junction, midX, midY) {
-        // Junction symbol: solid circle at connection point
+        // Junction symbol: proportionate X cross
         this.context.save();
-        this.context.fillStyle = '#000000';
+        this.context.strokeStyle = '#000000';
+        this.context.lineWidth = 3;
+        this.context.lineCap = 'round';
         
-        // Draw solid circle
+        const size = 12; // Half the size of the X
+        
+        // Draw X with equal proportions
         this.context.beginPath();
-        this.context.arc(midX, midY, 4, 0, Math.PI * 2);
-        this.context.fill();
+        // Top-left to bottom-right
+        this.context.moveTo(midX - size, midY - size);
+        this.context.lineTo(midX + size, midY + size);
+        // Top-right to bottom-left  
+        this.context.moveTo(midX + size, midY - size);
+        this.context.lineTo(midX - size, midY + size);
+        this.context.stroke();
 
         this.context.restore();
     }
