@@ -75,14 +75,26 @@ export class GroundRenderer extends ElementRenderer {
             this.context.rotate(3 * Math.PI / 2);
             
             // Draw the ground image centered at the rotated coordinate system
-            // The image is drawn from (-width/2, -height/2) to (width/2, height/2)
-            // which centers it at the current origin (which is now at groundX, groundY)
+            // Maintain aspect ratio and center the image
+            const aspectRatio = this.image.naturalWidth / this.image.naturalHeight;
+            let drawWidth, drawHeight;
+            
+            if (aspectRatio > 1) {
+                // Image is wider than tall
+                drawWidth = this.SCALED_WIDTH;
+                drawHeight = this.SCALED_WIDTH / aspectRatio;
+            } else {
+                // Image is taller than wide or square
+                drawHeight = this.SCALED_HEIGHT;
+                drawWidth = this.SCALED_HEIGHT * aspectRatio;
+            }
+            
             this.context.drawImage(
                 this.image,
-                -this.SCALED_WIDTH / 2,
-                -this.SCALED_HEIGHT / 2,
-                this.SCALED_WIDTH,
-                this.SCALED_HEIGHT,
+                -drawWidth / 2,
+                -drawHeight / 2,
+                drawWidth,
+                drawHeight,
             );
             
             this.context.restore();

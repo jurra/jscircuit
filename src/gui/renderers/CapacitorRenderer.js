@@ -61,13 +61,26 @@ export class CapacitorRenderer extends ElementRenderer {
 
         // Draw the capacitor representation
         if (this.imageLoaded && this.image) {
-            // Draw the capacitor image centered on the midpoint
+            // Maintain aspect ratio and center the image
+            const aspectRatio = this.image.naturalWidth / this.image.naturalHeight;
+            let drawWidth, drawHeight;
+            
+            if (aspectRatio > 1) {
+                // Image is wider than tall
+                drawWidth = this.SCALED_WIDTH;
+                drawHeight = this.SCALED_WIDTH / aspectRatio;
+            } else {
+                // Image is taller than wide or square
+                drawHeight = this.SCALED_HEIGHT;
+                drawWidth = this.SCALED_HEIGHT * aspectRatio;
+            }
+            
             this.context.drawImage(
                 this.image,
-                midX - this.SCALED_WIDTH / 2,
-                midY - this.SCALED_HEIGHT / 2,
-                this.SCALED_WIDTH,
-                this.SCALED_HEIGHT,
+                midX - drawWidth / 2,
+                midY - drawHeight / 2,
+                drawWidth,
+                drawHeight,
             );
         } else if (!this.imageLoading) {
             // Fallback: Draw capacitor symbol (two parallel lines)

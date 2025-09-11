@@ -68,14 +68,26 @@ export class ResistorRenderer extends ElementRenderer {
 
     // Draw the resistor representation
     if (this.imageLoaded && this.image) {
-      // Draw the resistor image centered on the midpoint.
-      // Since the nodes are snapped, this should align with the grid.
+      // Maintain aspect ratio and center the image
+      const aspectRatio = this.image.naturalWidth / this.image.naturalHeight;
+      let drawWidth, drawHeight;
+      
+      if (aspectRatio > 1) {
+        // Image is wider than tall
+        drawWidth = this.SCALED_WIDTH;
+        drawHeight = this.SCALED_WIDTH / aspectRatio;
+      } else {
+        // Image is taller than wide or square
+        drawHeight = this.SCALED_HEIGHT;
+        drawWidth = this.SCALED_HEIGHT * aspectRatio;
+      }
+      
       this.context.drawImage(
         this.image,
-        midX - this.SCALED_WIDTH / 2,
-        midY - this.SCALED_HEIGHT / 2,
-        this.SCALED_WIDTH,
-        this.SCALED_HEIGHT,
+        midX - drawWidth / 2,
+        midY - drawHeight / 2,
+        drawWidth,
+        drawHeight,
       );
     } else if (!this.imageLoading) {
       // Only show fallback if image is not currently loading
@@ -91,16 +103,11 @@ export class ResistorRenderer extends ElementRenderer {
       this.context.fillRect(rectX, rectY, this.SCALED_WIDTH, this.SCALED_HEIGHT);
       this.context.strokeRect(rectX, rectY, this.SCALED_WIDTH, this.SCALED_HEIGHT);
       
-      // Draw connection lines from terminals to the body
-      this.context.beginPath();
-      this.context.moveTo(start.x, start.y);
-      this.context.lineTo(rectX, midY);
-      this.context.moveTo(end.x, end.y);
-      this.context.lineTo(rectX + this.SCALED_WIDTH, midY);
-      this.context.stroke();
-      
       this.context.restore();
     }
+
+    // Draw connecting lines from terminals to resistor body
+    this.renderConnections(start, end, midX, midY);
     // If imageLoading is true, draw nothing for the resistor body
     // (terminals are already drawn above), wait for image to load
 
@@ -140,5 +147,25 @@ export class ResistorRenderer extends ElementRenderer {
       },
       { once: true },
     );
+  }
+
+  renderConnections(start, end, midX, midY) {
+    this.context.save();
+    this.context.strokeStyle = '#000000';
+    this.context.lineWidth = 1;
+
+    // Draw line from start to resistor body
+    this.context.beginPath();
+    this.context.moveTo(start.x, start.y);
+    this.context.lineTo(midX - this.SCALED_WIDTH / 2, midY);
+    this.context.stroke();
+
+    // Draw line from resistor body to end
+    this.context.beginPath();
+    this.context.moveTo(midX + this.SCALED_WIDTH / 2, midY);
+    this.context.lineTo(end.x, end.y);
+    this.context.stroke();
+
+    this.context.restore();
   }
 }
