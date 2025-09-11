@@ -85,6 +85,4 @@ export function setupCommands(circuitService, circuitRenderer) {
             undo: () => console.log("Delete All undo not implemented yet")
         }));
     }
-
-    console.log("Commands registered:", GUICommandRegistry.getTypes());
 }

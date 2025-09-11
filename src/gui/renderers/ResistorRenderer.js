@@ -35,7 +35,10 @@ export class ResistorRenderer extends ElementRenderer {
           console.warn('Failed to load resistor image');
           this.imageLoaded = false;
         };
-        this.image.src = await getImagePath("resistor");
+        
+        // getImagePath is now always async
+        const imagePath = await getImagePath("resistor");
+        this.image.src = imagePath;
       }
     } catch (error) {
       console.warn('Error loading resistor image:', error);

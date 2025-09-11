@@ -2,31 +2,61 @@
  * @file getImagePath.js
  * @description
  * Resolves image path for circuit element icons based on type and UI variant.
- * Compatible with both browser (using import.meta.url) and Node test environments (via `mock` flag).
+ * Compatible with browser (using import.meta.url), Node test environments (via `mock` flag),
+ * and Jupyter Widget environments (using conditional imports).
  *
  * @example
- * getImagePath("resistor")                 // → file:///.../R.png
- * getImagePath("resistor", "hover")       // → file:///.../R_hover.png
- * getImagePath("resistor", "hover", { mock: true }) // → /assets/R_hover.png
+ * getImagePath("resistor")                 // → file:///.../R.png (browser) or imported asset (jupyter)
+ * getImagePath("resistor", "hover")       // → file:///.../R_hover.png or imported asset
+ * getImagePath("resistor", "hover", { mock: true }) // → /assets/R_hover.png (tests)
  */
 
 /**
+ * Detects if we're running in Node.js environment
+ */
+function isNode() {
+  return typeof process !== 'undefined' && process.versions && process.versions.node;
+}
+
+/**
  * Resolves image path based on circuit element type and optional UI variant.
+ * Automatically detects environment and uses appropriate loading strategy.
  *
  * @param {string} type - Element type (e.g., "resistor", "capacitor").
  * @param {string} [variant="default"] - UI variant (e.g., "hover", "selected").
  * @param {Object} [options]
  * @param {boolean} [options.mock=false] - If true, returns a simplified mock path for test environments.
- * @returns {string} Path to the asset (absolute in browser, mock in Node).
+ * @returns {string|Promise<string>} Path to the asset.
  */
-export function getImagePath(type, variant = "default", { mock = false } = {}) {
+export async function getImagePath(type, variant = "default", { mock = false } = {}) {
   if (!type || typeof type !== "string") {
     throw new Error("Invalid or unknown type");
   }
 
+  // Construct filename based on type and variant
   const base = type.charAt(0).toUpperCase();
   const suffix = variant === "default" ? "" : `_${variant}`;
-  const path = `/assets/${base}${suffix}.png`;
+  const filename = `${base}${suffix}.png`;
 
-  return mock ? path : new URL(path, import.meta.url).href;
+  // Mock path for test environments
+  if (mock) {
+    return `/assets/${filename}`;
+  }
+
+  // Node.js environment - use URL-based approach
+  if (isNode()) {
+    const path = `/assets/${filename}`;
+    return new URL(path, import.meta.url).href;
+  }
+
+  // Browser environment - try dynamic import first (for bundlers like webpack/vite)
+  // If that fails, fallback to URL-based approach
+  try {
+    const importedAsset = await import(`../../assets/${filename}`);
+    return importedAsset.default || importedAsset;
+  } catch (error) {
+    // Fallback to URL-based approach if dynamic import fails
+    const path = `/assets/${filename}`;
+    return new URL(path, import.meta.url).href;
+  }
 }

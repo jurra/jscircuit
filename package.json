@@ -5,7 +5,7 @@
     "main": "src/gui/main.js",
     "scripts": {
         "test": "npx mocha 'tests/**/*.test.js' --require ./tests/setup.js",
-        "bundle": "esbuild src/gui/main.js --minify --format=esm --bundle --outdir=dist/static --asset-names=assets/[name] --loader:.png=dataurl",
+        "bundle": "esbuild src/gui/main.js --minify --format=esm --bundle --outdir=dist/static --asset-names=assets/[name] --loader:.png=dataurl --loader:.jpg=dataurl",
         "copy": "cp -r assets dist/assets && cp src/gui/gui.html dist/",
         "menu:build": "node scripts/build-menu-config.mjs",
         "build": "npm run menu:build && npm run bundle && npm run copy && npm run menu:build",
