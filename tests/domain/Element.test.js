@@ -2,6 +2,10 @@ import { expect } from 'chai';
 import { Element } from '../../src/domain/entities/Element.js';
 import { Resistor } from '../../src/domain/entities/Resistor.js';
 import { Wire } from '../../src/domain/entities/Wire.js';
+import { Capacitor } from '../../src/domain/entities/Capacitor.js';
+import { Inductor } from '../../src/domain/entities/Inductor.js';
+import { Junction } from '../../src/domain/entities/Junction.js';
+import { Ground } from '../../src/domain/entities/Ground.js';
 import { MockElement } from './MockElement.js'; // A mock element class for testing
 import { Position } from '../../src/domain/valueObjects/Position.js';
 import { Label } from '../../src/domain/valueObjects/Label.js';
@@ -88,4 +92,16 @@ describe('Element Class Tests', () => {
 
     // Tests for Wire
     testElementSubclass('Wire', Wire, {});
+
+    // Tests for Capacitor
+    testElementSubclass('Capacitor', Capacitor, { capacitance: 1e-12 });
+
+    // Tests for Inductor
+    testElementSubclass('Inductor', Inductor, { inductance: 1e-9 });
+
+    // Tests for Junction
+    testElementSubclass('Junction', Junction, {});
+
+    // Tests for Ground
+    testElementSubclass('Ground', Ground, {});
 });

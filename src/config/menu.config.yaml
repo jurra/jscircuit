@@ -82,15 +82,15 @@ menus:
 
       - id: insert.junction
         label: Junction
-        action: { kind: todo, note: "close app" }
+        action: { kind: command, name: addElement, args: ["Junction"] }
 
       - id: insert.inductor
         label: Inductor
-        action: { kind: todo, note: "close app" }
+        action: { kind: command, name: addElement, args: ["Inductor"] }
 
       - id: insert.capacitor
         label: Capacitor
-        action: { kind: todo, note: "close app" }
+        action: { kind: command, name: addElement, args: ["Capacitor"] }
 
       - id: insert.resistor
         label: Resistor
@@ -98,7 +98,7 @@ menus:
 
       - id: insert.ground
         label: Ground
-        action: { kind: todo, note: "close app" }
+        action: { kind: command, name: addElement, args: ["Ground"] }
 
 
   - label: View
