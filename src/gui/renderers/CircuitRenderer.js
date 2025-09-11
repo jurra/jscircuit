@@ -70,9 +70,15 @@ export class CircuitRenderer {
     initEventListeners() {
         this.canvas.addEventListener("wheel", (event) => this.zoom(event));
         this.canvas.addEventListener("mousedown", (event) => this.startPan(event));
-        this.canvas.addEventListener("mousemove", (event) => this.pan(event));
+        this.canvas.addEventListener("mousemove", (event) => {
+            this.pan(event);
+            this.handleMouseMove(event);
+        });
         this.canvas.addEventListener("mouseup", () => this.stopPan());
-        this.canvas.addEventListener("mouseleave", () => this.stopPan());
+        this.canvas.addEventListener("mouseleave", () => {
+            this.stopPan();
+            this.clearAllHovers();
+        });
     }
 
     /**
@@ -202,6 +208,89 @@ export class CircuitRenderer {
      */
     stopPan() {
         this.isPanning = false;
+    }
+
+    /**
+     * Handles mouse movement for hover detection
+     */
+    handleMouseMove(event) {
+        if (this.isPanning) return; // Don't handle hover during panning
+
+        const rect = this.canvas.getBoundingClientRect();
+        const mouseX = event.clientX - rect.left;
+        const mouseY = event.clientY - rect.top;
+
+        // Transform mouse coordinates to logical coordinates
+        const logicalX = (mouseX - this.offsetX) / this.scale;
+        const logicalY = (mouseY - this.offsetY) / this.scale;
+
+        this.checkElementHovers(logicalX, logicalY);
+    }
+
+    /**
+     * Check which elements should be hovered based on mouse position
+     */
+    checkElementHovers(mouseX, mouseY) {
+        let hoveredElement = null;
+        
+        // Check all circuit elements for hover
+        const elements = this.circuitService.getElements();
+        if (elements) {
+            for (const element of elements) {
+                const renderer = this.renderers.get(element.type);
+                if (renderer && renderer.isPointInBounds) {
+                    const [start, end] = element.nodes;
+                    const midX = (start.x + end.x) / 2;
+                    const midY = (start.y + end.y) / 2;
+                    
+                    if (renderer.isPointInBounds(mouseX, mouseY, midX, midY)) {
+                        hoveredElement = element;
+                        break; // Only hover one element at a time
+                    }
+                }
+            }
+        }
+
+        // Update hover states
+        let needsRerender = false;
+        const elements2 = this.circuitService.getElements();
+        if (elements2) {
+            for (const element of elements2) {
+                const renderer = this.renderers.get(element.type);
+                if (renderer && renderer.setHoverState) {
+                    const shouldHover = element === hoveredElement;
+                    if (renderer.setHoverState(shouldHover)) {
+                        needsRerender = true;
+                    }
+                }
+            }
+        }
+
+        if (needsRerender) {
+            this.render();
+        }
+    }
+
+    /**
+     * Clear all hover states
+     */
+    clearAllHovers() {
+        let needsRerender = false;
+        const elements = this.circuitService.getElements();
+        if (elements) {
+            for (const element of elements) {
+                const renderer = this.renderers.get(element.type);
+                if (renderer && renderer.setHoverState) {
+                    if (renderer.setHoverState(false)) {
+                        needsRerender = true;
+                    }
+                }
+            }
+        }
+
+        if (needsRerender) {
+            this.render();
+        }
     }
 
 

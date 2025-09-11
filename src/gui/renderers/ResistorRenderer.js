@@ -6,8 +6,11 @@ export class ResistorRenderer extends ElementRenderer {
   constructor(context) {
     super(context);
     this.image = null;
+    this.hoverImage = null;
     this.imageLoaded = false;
+    this.hoverImageLoaded = false;
     this.imageLoading = false;
+    this.isHovered = false;
 
     // Define proper dimensions for the resistor image
     this.SCALED_WIDTH = 50; // Adjusted width for display
@@ -15,35 +18,55 @@ export class ResistorRenderer extends ElementRenderer {
   }
 
   async initImageIfNeeded() {
-    if (this.image || this.imageLoading) return;
+    if (this.imageLoading) return;
 
     this.imageLoading = true;
     try {
       // Only create Image if we're in a browser environment
       if (typeof Image !== 'undefined') {
-        this.image = new Image();
-        this.image.onload = () => {
-          this.imageLoaded = true;
-          // Trigger a re-render when the image loads
-          if (this.context && this.context.canvas) {
-            // Dispatch a custom event to trigger re-render
-            const event = new CustomEvent('renderer:imageLoaded', { detail: { type: 'resistor' } });
-            document.dispatchEvent(event);
-          }
-        };
-        this.image.onerror = () => {
-          console.warn('Failed to load resistor image');
-          this.imageLoaded = false;
-        };
-        
-        // getImagePath is now always async
-        const imagePath = await getImagePath("resistor");
-        this.image.src = imagePath;
+        // Load normal image
+        if (!this.image) {
+          this.image = new Image();
+          this.image.onload = () => {
+            this.imageLoaded = true;
+            this.triggerRerender();
+          };
+          this.image.onerror = () => {
+            console.warn('Failed to load resistor image');
+            this.imageLoaded = false;
+          };
+          
+          const imagePath = await getImagePath("resistor");
+          this.image.src = imagePath;
+        }
+
+        // Load hover image
+        if (!this.hoverImage) {
+          this.hoverImage = new Image();
+          this.hoverImage.onload = () => {
+            this.hoverImageLoaded = true;
+            this.triggerRerender();
+          };
+          this.hoverImage.onerror = () => {
+            console.warn('Failed to load resistor hover image');
+            this.hoverImageLoaded = false;
+          };
+          
+          const hoverImagePath = await getImagePath("resistor", "hover");
+          this.hoverImage.src = hoverImagePath;
+        }
       }
     } catch (error) {
-      console.warn('Error loading resistor image:', error);
+      console.warn('Error loading resistor images:', error);
     } finally {
       this.imageLoading = false;
+    }
+  }
+
+  triggerRerender() {
+    if (this.context && this.context.canvas) {
+      const event = new CustomEvent('renderer:imageLoaded', { detail: { type: 'resistor' } });
+      document.dispatchEvent(event);
     }
   }
 
@@ -66,10 +89,13 @@ export class ResistorRenderer extends ElementRenderer {
     this.renderTerminal(start);
     this.renderTerminal(end);
 
-    // Draw the resistor representation
-    if (this.imageLoaded && this.image) {
+    // Draw the resistor representation using appropriate image
+    const currentImage = this.isHovered && this.hoverImageLoaded ? this.hoverImage : this.image;
+    const imageReady = this.isHovered && this.hoverImageLoaded ? this.hoverImageLoaded : this.imageLoaded;
+
+    if (imageReady && currentImage) {
       // Maintain aspect ratio and center the image
-      const aspectRatio = this.image.naturalWidth / this.image.naturalHeight;
+      const aspectRatio = currentImage.naturalWidth / currentImage.naturalHeight;
       let drawWidth, drawHeight;
       
       if (aspectRatio > 1) {
@@ -83,7 +109,7 @@ export class ResistorRenderer extends ElementRenderer {
       }
       
       this.context.drawImage(
-        this.image,
+        currentImage,
         midX - drawWidth / 2,
         midY - drawHeight / 2,
         drawWidth,
@@ -167,5 +193,40 @@ export class ResistorRenderer extends ElementRenderer {
     this.context.stroke();
 
     this.context.restore();
+  }
+
+  // Check if a point is within the resistor bounds
+  isPointInBounds(mouseX, mouseY, elementMidX, elementMidY) {
+    const halfWidth = this.SCALED_WIDTH / 2;
+    const halfHeight = this.SCALED_HEIGHT / 2;
+    
+    return (
+      mouseX >= elementMidX - halfWidth &&
+      mouseX <= elementMidX + halfWidth &&
+      mouseY >= elementMidY - halfHeight &&
+      mouseY <= elementMidY + halfHeight
+    );
+  }
+
+  // Method to set hover state (can be called externally)
+  setHoverState(isHovered) {
+    if (this.isHovered !== isHovered) {
+      this.isHovered = isHovered;
+      return true; // Indicates state changed, re-render needed
+    }
+    return false;
+  }
+
+  // Check if a point is within the resistor bounds
+  isPointInBounds(x, y, midX, midY) {
+    const halfWidth = this.SCALED_WIDTH / 2;
+    const halfHeight = this.SCALED_HEIGHT / 2;
+    
+    return (
+      x >= midX - halfWidth &&
+      x <= midX + halfWidth &&
+      y >= midY - halfHeight &&
+      y <= midY + halfHeight
+    );
   }
 }
