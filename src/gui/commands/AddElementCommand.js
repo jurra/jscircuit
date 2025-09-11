@@ -1,6 +1,7 @@
-// AddElementCommand.js
 import { GUICommand } from "./GUICommand.js";
 import { Position } from "../../domain/valueObjects/Position.js";
+import { ElementFactory } from "../../domain/factories/ElementFactory.js";
+import { Properties } from "../../domain/valueObjects/Properties.js";
 /**
  *
  * @param {CircuitService} circuitService - The circuit service to use.
@@ -34,51 +35,42 @@ export class AddElementCommand extends GUICommand {
    * @param {Array} nodes - An array of objects with {x, y} coordinates.
    */
 execute(nodes = null) {
-  const factory = this.elementRegistry.get(this.elementType);
-  if (!factory) {
-    console.error(
-      `Factory function for element type "${this.elementType}" not found.`,
-    );
-    return;
-  }
+  // Use ElementFactory.create instead of calling the factory directly
+  // This ensures proper parameter order and type checking
+  
+  // Set up default nodes if none provided
+  const defaultNodes = (Array.isArray(nodes) && nodes.length > 0) ? nodes : [
+    { x: this.DEFAULT_X, y: this.DEFAULT_Y },
+    { x: this.DEFAULT_X + this.ELEMENT_WIDTH, y: this.DEFAULT_Y },
+  ];
 
-  // Use default nodes if none are provided
-  let initialNodes = nodes;
-  if (!Array.isArray(nodes) || nodes.length !== 2) {
-    initialNodes = [
-      { x: this.DEFAULT_X - this.ELEMENT_WIDTH / 2, y: this.DEFAULT_Y },
-      { x: this.DEFAULT_X + this.ELEMENT_WIDTH / 2, y: this.DEFAULT_Y },
-    ];
-  }
-
-  // Snap to grid if enabled
-  let snappedNodes = initialNodes;
-  if (this.enableSnapping) {
-    snappedNodes = initialNodes.map(n => ({
+  // Snap nodes to grid if enabled
+  const snappedNodes = this.enableSnapping
+    ? defaultNodes.map(n => ({
       x: Math.round(n.x / this.gridSpacing) * this.gridSpacing,
       y: Math.round(n.y / this.gridSpacing) * this.gridSpacing,
-    }));
-  }
+    }))
+    : defaultNodes;
 
   const positions = snappedNodes.map(pt => new Position(pt.x, pt.y));
-  const element = factory(undefined, positions, null, {});
+  
+  // Create empty Properties instance for the element
+  const properties = new Properties({});
+  
+  // Use ElementFactory.create with correct parameter order
+  const element = ElementFactory.create(this.elementType, undefined, positions, properties, null);
 
   // Add the element in "placement mode" (so it follows the mouse)
   this.circuitService.addElement(element);
   this.circuitService.emit("startPlacing", { element });
-
-  if (this.circuitRenderer) {
-    this.circuitRenderer.render();
-  }
 }
 
-  bind() {
-    const button = document.getElementById(`add${this.elementType}`);
-    if (!button) {
-      console.warn(`Button for adding ${this.elementType} not found.`);
-      return;
-    }
-    button.addEventListener("click", () => this.execute());
-    console.log(`Bound AddElementCommand to add${this.elementType}`);
+  /**
+   * Undoes the add element command by removing the element from the circuit.
+   */
+  undo() {
+    // Implementation would need to track the added element and remove it
+    // For now, this is a placeholder
+    console.log("Undo AddElementCommand not fully implemented yet");
   }
 }
