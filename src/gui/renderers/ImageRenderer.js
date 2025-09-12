@@ -2,7 +2,7 @@ import { ElementRenderer } from "./ElementRenderer.js";
 import { getImagePath } from '../../utils/getImagePath.js';
 
 /**
- * Base class for renderers that use images with hover states
+ * Base class for renderers that use images with hover states and CSS-based selection
  */
 export class ImageRenderer extends ElementRenderer {
     constructor(context, elementType, scaledWidth = 50, scaledHeight = 20) {
@@ -15,10 +15,16 @@ export class ImageRenderer extends ElementRenderer {
         this.hoverImageLoaded = false;
         this.hoverImageLoading = false;
         this.isHovered = false;
+        this.isSelected = false;
 
         // Define proper dimensions for the element image
         this.SCALED_WIDTH = scaledWidth;
         this.SCALED_HEIGHT = scaledHeight;
+        
+        // Selection styling
+        this.SELECTION_BORDER_WIDTH = 3;
+        this.SELECTION_BORDER_COLOR = '#007ACC'; // VS Code blue
+        this.SELECTION_PADDING = 4; // Space between image and border
     }
 
     async initImageIfNeeded(loadHover = false) {
@@ -83,16 +89,23 @@ export class ImageRenderer extends ElementRenderer {
 
     /**
      * Get the appropriate image based on hover state
+     * Priority: hover > normal (selection is handled via CSS border)
      */
     getCurrentImage() {
-        return this.isHovered && this.hoverImageLoaded ? this.hoverImage : this.image;
+        if (this.isHovered && this.hoverImageLoaded) {
+            return this.hoverImage;
+        }
+        return this.image;
     }
 
     /**
      * Check if the current image is ready to render
      */
     isImageReady() {
-        return this.isHovered && this.hoverImageLoaded ? this.hoverImageLoaded : this.imageLoaded;
+        if (this.isHovered && this.hoverImageLoaded) {
+            return this.hoverImageLoaded;
+        }
+        return this.imageLoaded;
     }
 
     /**
@@ -121,6 +134,23 @@ export class ImageRenderer extends ElementRenderer {
         if (rotation !== 0) {
             this.context.rotate(rotation);
         }
+        
+        // Draw selection border first (behind the image)
+        if (this.isSelected) {
+            const borderWidth = this.SELECTION_BORDER_WIDTH;
+            const padding = this.SELECTION_PADDING;
+            const borderX = -drawWidth / 2 - padding;
+            const borderY = -drawHeight / 2 - padding;
+            const borderWidthTotal = drawWidth + (padding * 2);
+            const borderHeightTotal = drawHeight + (padding * 2);
+            
+            this.context.strokeStyle = this.SELECTION_BORDER_COLOR;
+            this.context.lineWidth = borderWidth;
+            this.context.setLineDash([]);
+            this.context.strokeRect(borderX, borderY, borderWidthTotal, borderHeightTotal);
+        }
+        
+        // Draw the main image
         this.context.drawImage(
             currentImage,
             -drawWidth / 2,
@@ -144,6 +174,24 @@ export class ImageRenderer extends ElementRenderer {
         if (isHovered && !this.hoverImage && !this.hoverImageLoading) {
             this.initImageIfNeeded(true); // Load hover image
         }
+        this.renderElement(element);
+    }
+
+    /**
+     * Render element with hover and selection states
+     * @param {Object} element - The element to render
+     * @param {boolean} isHovered - Whether the element is being hovered
+     * @param {boolean} isSelected - Whether the element is selected
+     */
+    renderElementWithStates(element, isHovered, isSelected) {
+        // Set states and ensure hover image is loaded if needed
+        this.isHovered = isHovered;
+        this.isSelected = isSelected;
+        
+        if (isHovered && !this.hoverImage && !this.hoverImageLoading) {
+            this.initImageIfNeeded(true); // Load hover image
+        }
+        
         this.renderElement(element);
     }
 

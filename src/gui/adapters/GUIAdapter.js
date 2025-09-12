@@ -337,6 +337,14 @@ export class GUIAdapter {
       if (event.button === 0) {
         const element = this.findElementAt(offsetX, offsetY);
 
+        // If clicking on an element, select it first
+        if (element) {
+          const selectCommand = this.guiCommandRegistry.get("selectElement");
+          if (selectCommand) {
+            selectCommand.execute(element);
+          }
+        }
+
         this.activeCommand = element
           ? this.guiCommandRegistry.get("dragElement", this.circuitService)
           : this.guiCommandRegistry.get(

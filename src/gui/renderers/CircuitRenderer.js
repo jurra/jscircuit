@@ -50,6 +50,9 @@ export class CircuitRenderer {
 
         // Track which specific element is currently hovered
         this.hoveredElement = null;
+        
+        // Track which element is currently selected
+        this.selectedElement = null;
 
         // Bind event handlers to maintain correct "this" reference
         this.zoom = this.zoom.bind(this);
@@ -118,12 +121,15 @@ export class CircuitRenderer {
 
             const renderer = this.renderers.get(element.type);
             const isHovered = this.hoveredElement === element;
+            const isSelected = this.selectedElement === element;
             
-            // Pass hover state to the renderer
-            if (renderer.renderElementWithHover) {
+            // Pass hover and selection states to the renderer
+            if (renderer.renderElementWithStates) {
+                renderer.renderElementWithStates(element, isHovered, isSelected);
+            } else if (renderer.renderElementWithHover) {
                 renderer.renderElementWithHover(element, isHovered);
             } else {
-                // Fallback for renderers that don't support hover
+                // Fallback for renderers that don't support hover or selection
                 renderer.renderElement(element);
             }
         });
@@ -285,6 +291,32 @@ export class CircuitRenderer {
             this.hoveredElement = null;
             this.render();
         }
+    }
+
+    /**
+     * Set the selected element
+     * @param {Object|null} element - The element to select, or null to clear selection
+     */
+    setSelectedElement(element) {
+        if (this.selectedElement !== element) {
+            this.selectedElement = element;
+            this.render();
+        }
+    }
+
+    /**
+     * Get the currently selected element
+     * @returns {Object|null} The selected element or null
+     */
+    getSelectedElement() {
+        return this.selectedElement;
+    }
+
+    /**
+     * Clear the current selection
+     */
+    clearSelection() {
+        this.setSelectedElement(null);
     }
 
 
