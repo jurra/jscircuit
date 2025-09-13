@@ -2,7 +2,7 @@ import { ImageRenderer } from "./ImageRenderer.js";
 
 export class JunctionRenderer extends ImageRenderer {
     constructor(context) {
-        super(context, "junction", 30, 30);
+        super(context, "junction", 40, 40);
     }
 
     renderElement(junction) {
