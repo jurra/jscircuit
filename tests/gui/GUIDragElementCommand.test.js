@@ -328,4 +328,105 @@ describe("CircuitService Dragging Tests", function () {
     expect(updatedWires.length).to.be.greaterThan(2);
   });
 
+  it("should drag multiple selected elements maintaining relative positions", function () {
+    // Create a mock circuit renderer that has multiple elements selected
+    const circuitRenderer = new CircuitRenderer(
+      canvas, 
+      circuitService, 
+      rendererFactory, 
+      () => false // isCommandActive function
+    );
+    
+    // Add another resistor to have multiple elements
+    const testResistor2 = {
+      id: "R2",
+      type: "resistor",
+      nodes: [new Position(150, 100), new Position(200, 100)],
+    };
+    circuitService.addElement(testResistor2);
+
+    // Mock the selected elements
+    circuitRenderer.setSelectedElements([testResistor, testResistor2]);
+
+    const updates = setupListener("MultipleDrag");
+    const command = new DragElementCommand(circuitService, circuitRenderer, wireSplitService);
+
+    // Store original positions
+    const origR1Node0 = { x: testResistor.nodes[0].x, y: testResistor.nodes[0].y };
+    const origR1Node1 = { x: testResistor.nodes[1].x, y: testResistor.nodes[1].y };
+    const origR2Node0 = { x: testResistor2.nodes[0].x, y: testResistor2.nodes[0].y };
+    const origR2Node1 = { x: testResistor2.nodes[1].x, y: testResistor2.nodes[1].y };
+
+    // Calculate original relative distance between the two resistors
+    const origRelativeX = origR2Node0.x - origR1Node0.x; // 150 - 50 = 100
+    const origRelativeY = origR2Node0.y - origR1Node0.y; // 100 - 50 = 50
+
+    // Click on first resistor to start multi-element drag
+    command.start(50, 50);
+    
+    // Move by (30, 20)
+    command.move(80, 70);
+    command.stop();
+
+    expect(updates.length).to.be.greaterThan(0);
+    expect(updates[0].type).to.equal("dragElement");
+
+    // Both resistors should have moved by the same amount
+    const expectedDeltaX = 30; // 80 - 50
+    const expectedDeltaY = 20; // 70 - 50
+
+    // Check first resistor moved correctly
+    expect(testResistor.nodes[0].x).to.equal(origR1Node0.x + expectedDeltaX);
+    expect(testResistor.nodes[0].y).to.equal(origR1Node0.y + expectedDeltaY);
+    expect(testResistor.nodes[1].x).to.equal(origR1Node1.x + expectedDeltaX);
+    expect(testResistor.nodes[1].y).to.equal(origR1Node1.y + expectedDeltaY);
+
+    // Check second resistor moved correctly
+    expect(testResistor2.nodes[0].x).to.equal(origR2Node0.x + expectedDeltaX);
+    expect(testResistor2.nodes[0].y).to.equal(origR2Node0.y + expectedDeltaY);
+    expect(testResistor2.nodes[1].x).to.equal(origR2Node1.x + expectedDeltaX);
+    expect(testResistor2.nodes[1].y).to.equal(origR2Node1.y + expectedDeltaY);
+
+    // Check that relative positions are maintained
+    const newRelativeX = testResistor2.nodes[0].x - testResistor.nodes[0].x;
+    const newRelativeY = testResistor2.nodes[0].y - testResistor.nodes[0].y;
+    
+    expect(newRelativeX).to.equal(origRelativeX);
+    expect(newRelativeY).to.equal(origRelativeY);
+  });
+
+  it("should handle single element drag when only one element is selected", function () {
+    // Create a mock circuit renderer with single element selected
+    const circuitRenderer = new CircuitRenderer(
+      canvas, 
+      circuitService, 
+      rendererFactory, 
+      () => false // isCommandActive function
+    );
+    circuitRenderer.setSelectedElements([testResistor]);
+
+    const updates = setupListener("SingleDragFromSelection");
+    const command = new DragElementCommand(circuitService, circuitRenderer, wireSplitService);
+
+    // Store original positions
+    const origNode0 = { x: testResistor.nodes[0].x, y: testResistor.nodes[0].y };
+    const origNode1 = { x: testResistor.nodes[1].x, y: testResistor.nodes[1].y };
+
+    // Click on resistor to start drag
+    command.start(50, 50);
+    command.move(80, 70);
+    command.stop();
+
+    expect(updates.length).to.be.greaterThan(0);
+
+    // Should behave exactly like normal single element drag
+    const expectedDeltaX = 30;
+    const expectedDeltaY = 20;
+
+    expect(testResistor.nodes[0].x).to.equal(origNode0.x + expectedDeltaX);
+    expect(testResistor.nodes[0].y).to.equal(origNode0.y + expectedDeltaY);
+    expect(testResistor.nodes[1].x).to.equal(origNode1.x + expectedDeltaX);
+    expect(testResistor.nodes[1].y).to.equal(origNode1.y + expectedDeltaY);
+  });
+
 });

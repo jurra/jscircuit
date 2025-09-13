@@ -94,7 +94,7 @@ export function setupCommands(circuitService, circuitRenderer) {
 
     if (!GUICommandRegistry.getTypes().includes("dragElement")) {
         GUICommandRegistry.register("dragElement", () =>
-            new DragElementCommand(circuitService, wireSplitService)
+            new DragElementCommand(circuitService, circuitRenderer, wireSplitService)
         );
     }
 
