@@ -78,6 +78,8 @@ export class GUIAdapter {
     /** @private */
     this.mouseDownPos = { x: 0, y: 0 };
     /** @private */
+    this.wireDrawingMode = false; // Wire drawing mode state
+    /** @private */
     this.placingElement = null;
 
     // Listener refs for clean disposal
@@ -143,6 +145,14 @@ export class GUIAdapter {
       (e.key.length === 1 ? e.key.toUpperCase() : e.key);
 
     this._onKeydown = (e) => {
+      // Handle Escape key to cancel wire drawing mode
+      if (e.key === 'Escape' && this.wireDrawingMode) {
+        this.resetCursor();
+        console.log("[GUIAdapter] Wire drawing mode cancelled");
+        e.preventDefault();
+        return;
+      }
+
       const id = keymap[signature(e)];
       if (!id) return;
       e.preventDefault();
@@ -206,6 +216,14 @@ export class GUIAdapter {
   _exec(spec) {
     switch (spec.kind) {
       case "command": {
+        // Special handling for wire drawing mode
+        if (spec.name === "addElement" && spec.args && spec.args[0] === "Wire") {
+          this.wireDrawingMode = true;
+          this.setCrosshairCursor();
+          console.log("[GUIAdapter] Wire drawing mode activated");
+          return;
+        }
+
         const args = spec.args ?? [];
         const cmd = this.guiCommandRegistry.get(
           spec.name,
@@ -346,13 +364,21 @@ export class GUIAdapter {
           }
         }
 
-        this.activeCommand = element
-          ? this.guiCommandRegistry.get("dragElement", this.circuitService)
-          : this.guiCommandRegistry.get(
-              "drawWire",
-              this.circuitService,
-              this.elementRegistry,
-            );
+        // Determine which command to start based on context
+        if (element) {
+          // Clicking on an element always starts drag
+          this.activeCommand = this.guiCommandRegistry.get("dragElement", this.circuitService);
+        } else if (this.wireDrawingMode) {
+          // Only start wire drawing if wire mode is active
+          this.activeCommand = this.guiCommandRegistry.get(
+            "drawWire",
+            this.circuitService,
+            this.elementRegistry,
+          );
+        } else {
+          // Clicking on empty space without wire mode does nothing
+          this.activeCommand = null;
+        }
 
         if (this.activeCommand) {
           const before = this.circuitService.exportState();
@@ -408,6 +434,7 @@ export class GUIAdapter {
 
       if (this.activeCommand) {
         const before = this.activeCommand.beforeSnapshot;
+        const wasWireDrawing = this.activeCommand.constructor.name === 'DrawWireCommand';
 
         if (!this.hasDragged && this.activeCommand.cancel) {
           this.activeCommand.cancel();
@@ -426,6 +453,12 @@ export class GUIAdapter {
 
             this.commandHistory.executeCommand(snapshotCommand, this.circuitService);
           }
+        }
+
+        // Reset wire drawing mode after completing a wire
+        if (wasWireDrawing && this.wireDrawingMode) {
+          this.resetCursor();
+          console.log("[GUIAdapter] Wire drawing mode deactivated");
         }
 
         this.activeCommand = null;
@@ -512,5 +545,22 @@ export class GUIAdapter {
       if (JSON.stringify(a.nodes) !== JSON.stringify(b.nodes)) return true;
     }
     return false;
+  }
+
+  /**
+   * Set crosshair cursor for wire drawing mode
+   * @private
+   */
+  setCrosshairCursor() {
+    this.canvas.style.cursor = 'crosshair';
+  }
+
+  /**
+   * Reset cursor to default and deactivate wire drawing mode
+   * @private
+   */
+  resetCursor() {
+    this.canvas.style.cursor = 'default';
+    this.wireDrawingMode = false;
   }
 }
