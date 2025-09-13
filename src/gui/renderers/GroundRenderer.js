@@ -3,6 +3,75 @@ import { ImageRenderer } from "./ImageRenderer.js";
 export class GroundRenderer extends ImageRenderer {
     constructor(context) {
         super(context, "ground", 40, 30);
+        this.GROUND_NODE_PADDING = 0; // Padding between node and bottom of ground image
+    }
+
+    /**
+     * Override drawImage to provide special selection positioning for ground
+     */
+    drawImage(x, y, rotation = 0) {
+        const currentImage = this.getCurrentImage();
+        if (!this.isImageReady() || !currentImage) return false;
+
+        // Maintain aspect ratio and center the image
+        const aspectRatio = currentImage.naturalWidth / currentImage.naturalHeight;
+        let drawWidth, drawHeight;
+        
+        if (aspectRatio > 1) {
+            // Image is wider than tall
+            drawWidth = this.SCALED_WIDTH;
+            drawHeight = this.SCALED_WIDTH / aspectRatio;
+        } else {
+            // Image is taller than wide or square
+            drawHeight = this.SCALED_HEIGHT;
+            drawWidth = this.SCALED_HEIGHT * aspectRatio;
+        }
+
+        this.context.save();
+        this.context.translate(x, y);
+        if (rotation !== 0) {
+            this.context.rotate(rotation);
+        }
+        
+        // Special selection border positioning for ground
+        if (this.isSelected) {
+            const borderWidth = this.SELECTION_BORDER_WIDTH;
+            const padding = this.GROUND_NODE_PADDING;
+            
+            // For ground: selection box should include connection node + ground image
+            // Connection node is at (0, -30) relative to ground center
+            // We want the selection to go from just above the node to just below the ground
+            const nodeY = -30; // Node position relative to ground center
+            const groundTop = -drawHeight / 2; // Top of ground image
+            const groundBottom = drawHeight / 2; // Bottom of ground image
+            
+            // Selection box from node (with padding) to ground bottom (with padding)
+            const selectionTop = nodeY - padding;
+            const selectionBottom = groundBottom + padding;
+            const selectionHeight = selectionBottom - selectionTop;
+            
+            const borderX = -5;
+            const borderY = -21.5;
+            const borderWidthTotal = drawWidth + (padding * 2) + borderWidth;
+            const borderHeightTotal = selectionHeight + borderWidth;
+            
+            this.context.strokeStyle = this.SELECTION_BORDER_COLOR;
+            this.context.lineWidth = borderWidth;
+            this.context.setLineDash([]);
+            this.context.strokeRect(borderX, borderY, borderWidthTotal, borderHeightTotal);
+        }
+        
+        // Draw the main image
+        this.context.drawImage(
+            currentImage,
+            -drawWidth / 2,
+            -drawHeight / 2,
+            drawWidth,
+            drawHeight
+        );
+        this.context.restore();
+        
+        return true;
     }
 
     renderElement(ground) {
