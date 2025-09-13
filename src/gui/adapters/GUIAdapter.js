@@ -61,6 +61,7 @@ export class GUIAdapter {
       canvas,
       circuitService,
       rendererFactory,
+      () => this.activeCommand !== null, // Function to check if there's an active command
     );
 
     /** @private @const {!GUICommandRegistry} */

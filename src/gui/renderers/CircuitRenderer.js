@@ -22,12 +22,14 @@ export class CircuitRenderer {
      * @param {HTMLCanvasElement} canvas - The canvas element for rendering.
      * @param {CircuitService} circuitService - The service managing circuit elements.
      * @param {RendererFactory} rendererFactory - The factory responsible for creating element renderers.
+     * @param {Function} isCommandActive - Function that returns true if there's an active command
      */
-    constructor(canvas, circuitService, rendererFactory) {
+    constructor(canvas, circuitService, rendererFactory, isCommandActive = null) {
         this.canvas = canvas;
         this.context = canvas.getContext('2d');
         this.circuitService = circuitService;
         this.rendererFactory = rendererFactory;
+        this.isCommandActive = isCommandActive;
 
         // Preload renderers from the factory
         this.renderers = new Map(
@@ -248,6 +250,16 @@ export class CircuitRenderer {
      * Check which elements should be hovered based on mouse position
      */
     checkElementHovers(mouseX, mouseY) {
+        // Skip hover detection if there's an active command (like wire drawing)
+        if (this.isCommandActive && this.isCommandActive()) {
+            // Clear any existing hover state
+            if (this.hoveredElement) {
+                this.hoveredElement = null;
+                this.render();
+            }
+            return;
+        }
+
         let newHoveredElement = null;
         
         // Check all circuit elements for hover
