@@ -461,6 +461,8 @@ export class GUIAdapter {
         return;
       }
 
+      const { offsetX, offsetY } = this.getTransformedMousePosition(event);
+
       // Finalize selection box if selecting
       if (this.isSelecting) {
         this.finalizeSelection();
@@ -633,16 +635,27 @@ export class GUIAdapter {
     const top = Math.min(startY, endY);
     const bottom = Math.max(startY, endY);
 
+    // Check if this was just a click (very small selection box)
+    const boxWidth = right - left;
+    const boxHeight = bottom - top;
+    const isJustClick = boxWidth <= 5 && boxHeight <= 5;
+
     // Find elements within selection box
     const selectedElements = this.circuitService.getElements().filter(element => {
       return this.isElementInBox(element, left, top, right, bottom);
     });
 
-    // Select all elements using multi-select command
     if (selectedElements.length > 0) {
+      // Select all elements using multi-select command
       const multiSelectCommand = this.guiCommandRegistry.get("multiSelectElement");
       if (multiSelectCommand) {
         multiSelectCommand.execute(selectedElements);
+      }
+    } else if (isJustClick) {
+      // If it was just a click on empty space, deselect all
+      const deselectAllCommand = this.guiCommandRegistry.get("deselectAll");
+      if (deselectAllCommand) {
+        deselectAllCommand.execute();
       }
     }
 

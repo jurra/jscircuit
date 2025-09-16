@@ -156,6 +156,17 @@ export function setupCommands(circuitService, circuitRenderer) {
         }));
     }
 
+    if (!GUICommandRegistry.getTypes().includes("deselectAll")) {
+        GUICommandRegistry.register("deselectAll", () => ({
+            execute: () => {
+                console.log("Deselect All executing");
+                circuitRenderer.clearSelection();
+                circuitService.emit("update");
+            },
+            undo: () => console.log("Deselect All undo not implemented yet")
+        }));
+    }
+
         // Register rotation commands
     if (!GUICommandRegistry.getTypes().includes("rotateRight")) {
         GUICommandRegistry.register("rotateRight", (circuitService, circuitRenderer, elementRegistry) => ({
@@ -168,13 +179,18 @@ export function setupCommands(circuitService, circuitRenderer) {
                     return { undo: () => {} }; // No-op if nothing selected
                 }
                 
-                // Get element IDs for group rotation
+                if (selectedElements.length > 1) {
+                    console.log("[rotateRight] Can only rotate one element at a time");
+                    return { undo: () => {} }; // No-op if multiple elements selected
+                }
+                
+                // Get element IDs for single element rotation
                 const elementIds = selectedElements.map(element => element.id);
                 
                 // Rotate 90 degrees clockwise (to the right)
                 circuitService.rotateElements(elementIds, 90);
                 
-                console.log(`[rotateRight] Rotated ${selectedElements.length} elements 90° clockwise around bounding box center`);
+                console.log(`[rotateRight] Rotated element 90° clockwise`);
                 
                 return {
                     undo: () => circuitService.importState(before)
@@ -195,13 +211,18 @@ export function setupCommands(circuitService, circuitRenderer) {
                     return { undo: () => {} }; // No-op if nothing selected
                 }
                 
-                // Get element IDs for group rotation
+                if (selectedElements.length > 1) {
+                    console.log("[rotateUp] Can only rotate one element at a time");
+                    return { undo: () => {} }; // No-op if multiple elements selected
+                }
+                
+                // Get element IDs for single element rotation
                 const elementIds = selectedElements.map(element => element.id);
                 
                 // Rotate 180 degrees (flip upside down)
                 circuitService.rotateElements(elementIds, 180);
                 
-                console.log(`[rotateUp] Rotated ${selectedElements.length} elements 180° around bounding box center`);
+                console.log(`[rotateUp] Rotated element 180°`);
                 
                 return {
                     undo: () => circuitService.importState(before)
@@ -222,13 +243,18 @@ export function setupCommands(circuitService, circuitRenderer) {
                     return { undo: () => {} }; // No-op if nothing selected
                 }
                 
-                // Get element IDs for group rotation
+                if (selectedElements.length > 1) {
+                    console.log("[rotateLeft] Can only rotate one element at a time");
+                    return { undo: () => {} }; // No-op if multiple elements selected
+                }
+                
+                // Get element IDs for single element rotation
                 const elementIds = selectedElements.map(element => element.id);
                 
                 // Rotate 90 degrees counter-clockwise (to the left)
                 circuitService.rotateElements(elementIds, -90);
                 
-                console.log(`[rotateLeft] Rotated ${selectedElements.length} elements 90° counter-clockwise around bounding box center`);
+                console.log(`[rotateLeft] Rotated element 90° counter-clockwise`);
                 
                 return {
                     undo: () => circuitService.importState(before)
@@ -249,13 +275,18 @@ export function setupCommands(circuitService, circuitRenderer) {
                     return { undo: () => {} }; // No-op if nothing selected
                 }
                 
-                // Get element IDs for group rotation
+                if (selectedElements.length > 1) {
+                    console.log("[rotateDown] Can only rotate one element at a time");
+                    return { undo: () => {} }; // No-op if multiple elements selected
+                }
+                
+                // Get element IDs for single element rotation
                 const elementIds = selectedElements.map(element => element.id);
                 
                 // Rotate 180 degrees (same as "up" - flip)
                 circuitService.rotateElements(elementIds, 180);
                 
-                console.log(`[rotateDown] Rotated ${selectedElements.length} elements 180° around bounding box center`);
+                console.log(`[rotateDown] Rotated element 180°`);
                 
                 return {
                     undo: () => circuitService.importState(before)

@@ -42,6 +42,8 @@ export class DragElementCommand extends GUICommand {
     // For storing initial offset and original position
     this.offset = { x: 0, y: 0 };
     this.nodeStartPos = { x: 0, y: 0 };
+    this.elementStartPos = new Map(); // Track initial positions for all elements
+    this.actuallyMoved = false; // Track if any actual movement occurred
 
     // Axis lock: "horizontal", "vertical", or null
     this.dragAxis = null;
@@ -61,6 +63,10 @@ export class DragElementCommand extends GUICommand {
    * @param {number} mouseY - Y coordinate of mouse.
    */
   start(mouseX, mouseY) {
+    // Reset movement tracking
+    this.actuallyMoved = false;
+    this.elementStartPos.clear();
+    
     // Get currently selected elements (if circuitRenderer is available)
     const selectedElements = this.circuitRenderer ? this.circuitRenderer.getSelectedElements() : [];
     
@@ -79,6 +85,11 @@ export class DragElementCommand extends GUICommand {
           this.nodeStartPos.x = node.x;
           this.nodeStartPos.y = node.y;
           
+          // Store initial position for movement tracking
+          this.elementStartPos.set(element.id, {
+            nodes: element.nodes.map(n => ({ x: n.x, y: n.y }))
+          });
+          
           // For node dragging, we only drag the specific node, not multiple elements
           this.selectedElements = [element];
           return;
@@ -91,10 +102,23 @@ export class DragElementCommand extends GUICommand {
         this.draggingNodeIndex = null;
         this.dragAxis = null;
 
+        // Store initial position for movement tracking
+        this.elementStartPos.set(element.id, {
+          nodes: element.nodes.map(n => ({ x: n.x, y: n.y }))
+        });
+
         // Check if this element is part of a multi-selection
         if (selectedElements.length > 1 && selectedElements.includes(element)) {
           // Multi-element drag: setup all selected elements
           this.selectedElements = [...selectedElements];
+          // Store initial positions for all selected elements
+          for (const el of this.selectedElements) {
+            if (!this.elementStartPos.has(el.id)) {
+              this.elementStartPos.set(el.id, {
+                nodes: el.nodes.map(n => ({ x: n.x, y: n.y }))
+              });
+            }
+          }
           this.setupMultiElementDrag(mouseX, mouseY);
         } else {
           // Single element drag
@@ -188,6 +212,17 @@ move(mouseX, mouseY) {
     // Step 5: apply movement
     node.x = intendedX;
     node.y = intendedY;
+    
+    // Check if actual movement occurred
+    if (!this.actuallyMoved) {
+      const startPos = this.elementStartPos.get(this.draggedElement.id);
+      if (startPos && startPos.nodes[this.draggingNodeIndex]) {
+        const originalNode = startPos.nodes[this.draggingNodeIndex];
+        if (Math.abs(node.x - originalNode.x) > 1 || Math.abs(node.y - originalNode.y) > 1) {
+          this.actuallyMoved = true;
+        }
+      }
+    }
   }
 
   // Branch 2: Dragging entire shapes (single or multiple elements)
@@ -212,6 +247,11 @@ move(mouseX, mouseY) {
       this.draggedElement.nodes = this.draggedElement.nodes.map(
         (n) => new Position(n.x + deltaX, n.y + deltaY)
       );
+      
+      // Check if actual movement occurred
+      if (!this.actuallyMoved && (Math.abs(deltaX) > 1 || Math.abs(deltaY) > 1)) {
+        this.actuallyMoved = true;
+      }
     }
   }
 
@@ -251,6 +291,11 @@ moveMultipleElements(mouseX, mouseY) {
     element.nodes = element.nodes.map(
       (n) => new Position(n.x + deltaX, n.y + deltaY)
     );
+    
+    // Check if actual movement occurred
+    if (!this.actuallyMoved && (Math.abs(deltaX) > 1 || Math.abs(deltaY) > 1)) {
+      this.actuallyMoved = true;
+    }
   }
 }
 
@@ -262,7 +307,9 @@ moveMultipleElements(mouseX, mouseY) {
    * - splitting the dragged wire if its body touches another node
    */
   stop() {
+    // Only perform wire splitting checks if the element was actually moved
     if (
+      this.actuallyMoved &&
       this.draggedElement?.type === "wire" &&
       Array.isArray(this.draggedElement.nodes) &&
       this.draggedElement.nodes.length === 2
@@ -306,7 +353,10 @@ moveMultipleElements(mouseX, mouseY) {
           }
 
           // Case: dragged node touches another wire's body
-          this.wireSplitService.trySplitAtNode(node);
+          // Only check if the node was actually moved
+          if (this.actuallyMoved) {
+            this.wireSplitService.trySplitAtNode(node);
+          }
         }
       }
     }
@@ -322,6 +372,8 @@ moveMultipleElements(mouseX, mouseY) {
     this.draggedElement = null;
     this.draggingNodeIndex = null;
     this.dragAxis = null;
+    this.actuallyMoved = false;
+    this.elementStartPos.clear();
   }
 
   /**
