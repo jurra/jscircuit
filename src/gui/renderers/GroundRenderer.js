@@ -39,21 +39,21 @@ export class GroundRenderer extends ImageRenderer {
             const padding = this.GROUND_NODE_PADDING;
             
             // For ground: selection box should include connection node + ground image
-            // Connection node is at (0, -30) relative to ground center
-            // We want the selection to go from just above the node to just below the ground
-            const nodeY = -30; // Node position relative to ground center
-            const groundTop = -drawHeight / 2; // Top of ground image
-            const groundBottom = drawHeight / 2; // Bottom of ground image
+            // The connection node is at the right end of the ground symbol
+            // The image center is offset leftward from the node
+            const imageLeft = -drawWidth / 2; // Left edge of the PNG image (relative to image center)
+            const imageRight = drawWidth / 2; // Right edge of the PNG image (relative to image center)
+            const nodeToImageCenter = drawWidth / 2; // Distance from node to image center
             
-            // Selection box from node (with padding) to ground bottom (with padding)
-            const selectionTop = nodeY - padding;
-            const selectionBottom = groundBottom + padding;
-            const selectionHeight = selectionBottom - selectionTop;
+            // Selection box should extend from the left edge of image to the connection node
+            const selectionLeft = imageLeft - padding;
+            const selectionRight = imageRight + nodeToImageCenter + padding; // Include connection node
+            const selectionWidth = selectionRight - selectionLeft;
             
-            const borderX = -5;
-            const borderY = -21.5;
-            const borderWidthTotal = drawWidth + (padding * 2) + borderWidth;
-            const borderHeightTotal = selectionHeight + borderWidth;
+            const borderX = selectionLeft;
+            const borderY = -drawHeight / 2 - padding;
+            const borderWidthTotal = selectionWidth;
+            const borderHeightTotal = drawHeight + (padding * 2);
             
             this.context.strokeStyle = this.SELECTION_BORDER_COLOR;
             this.context.lineWidth = borderWidth;
@@ -80,34 +80,66 @@ export class GroundRenderer extends ImageRenderer {
         }
 
         const [connectionNode] = ground.nodes;
-        const groundX = connectionNode.x;
-        const groundY = connectionNode.y + 30;
+        
+        // Position the image so the connection node is at the RIGHT END of the ground image
+        // and aligned with the CENTER POINT of the image (using original position as reference)
+        // The connection node should be at the right edge, vertically centered
+        const groundX = connectionNode.x - (this.SCALED_WIDTH / 2); // Move image left so node is at right edge
+        const groundY = connectionNode.y; // Node Y aligns with image center Y
 
-        this.renderTerminal(connectionNode);
+        // Calculate rotation angle based on element orientation
+        const orientation = ground.properties.values.orientation || 0;
+        const orientationRad = (orientation * Math.PI) / 180;
 
-        if (!this.drawImage(groundX, groundY, 3 * Math.PI / 2)) {
-            this.renderFallback(ground, groundX, groundY);
+        // Apply rotation around the connection node (the reference point)
+        this.context.save();
+        this.context.translate(connectionNode.x, connectionNode.y);
+        this.context.rotate(orientationRad);
+        this.context.translate(-connectionNode.x, -connectionNode.y);
+
+        // Draw the ground symbol with node at the right end, center-aligned
+        if (!this.drawImage(groundX, groundY)) {
+            this.renderFallback(ground, connectionNode.x, connectionNode.y);
         }
 
-        this.renderConnections(connectionNode, groundX, groundY);
+        // Restore rotation
+        this.context.restore();
+
+        // Draw the connection node at the exact connection point
+        this.renderTerminal(connectionNode);
 
         if (ground.label && ground.label.text) {
             this.renderLabel(ground.label.text, groundX, groundY + 30);
         }
     }
 
-    renderFallback(ground, groundX, groundY) {
+    renderFallback(ground, nodeX, nodeY) {
         this.context.save();
         this.context.strokeStyle = '#000000';
         this.context.lineWidth = 2;
 
+        // Draw the ground symbol with the connection node at the RIGHT END, center-aligned
+        // The node is at (nodeX, nodeY) - this is at the right edge of the ground symbol
+        
+        // Draw horizontal line from the connection node leftward to the ground symbol
+        const connectionLineLength = 15; // Length of the connection line from node to ground
+        
+        this.context.beginPath();
+        this.context.moveTo(nodeX, nodeY); // Start at the connection node (right end)
+        this.context.lineTo(nodeX - connectionLineLength, nodeY); // Draw left to ground symbol
+        this.context.stroke();
+
+        // Draw vertical ground lines extending downward from the end of the connection line
+        // The ground lines should be centered vertically around the connection node
         const lineWidths = [20, 12, 6];
+        const startX = nodeX - connectionLineLength; // Where the connection line ends
+        
         for (let i = 0; i < lineWidths.length; i++) {
-            const y = groundY + (i * 5);
-            const halfWidth = lineWidths[i] / 2;
+            const x = startX - (i * 3); // Move ground lines further left
+            const halfHeight = lineWidths[i] / 2;
             this.context.beginPath();
-            this.context.moveTo(groundX - halfWidth, y);
-            this.context.lineTo(groundX + halfWidth, y);
+            this.context.moveTo(x, nodeY - halfHeight); // Draw upward from center
+            this.context.lineTo(x, nodeY + halfHeight); // Draw downward from center
             this.context.stroke();
         }
 
@@ -115,32 +147,37 @@ export class GroundRenderer extends ImageRenderer {
     }
 
     renderConnections(connectionNode, groundX, groundY) {
-        this.context.save();
-        this.context.strokeStyle = '#000000';
-        this.context.lineWidth = 2;
-
-        const strokeEndY = groundY - 15;
-        
-        this.context.beginPath();
-        this.context.moveTo(connectionNode.x, connectionNode.y);
-        this.context.lineTo(groundX, strokeEndY);
-        this.context.stroke();
-
-        this.context.restore();
+        // No connection lines needed - the node is placed directly at the connection point
+        // This method is kept for compatibility but does nothing
     }
 
     // Override isPointInBounds for ground specific positioning
     isPointInBounds(mouseX, mouseY, elementMidX, elementMidY) {
-        const groundX = elementMidX;
-        const groundY = elementMidY + 30;
+        // The elementMidX, elementMidY represents the connection node position (at right end)
+        // The ground image center is offset leftward from the node
+        const nodeX = elementMidX;
+        const nodeY = elementMidY;
+        const imageX = nodeX - (this.SCALED_WIDTH / 2); // Image center is offset left from node
+        const imageY = nodeY; // Image center Y aligns with node Y
+        
         const halfWidth = this.SCALED_WIDTH / 2;
         const halfHeight = this.SCALED_HEIGHT / 2;
         
-        return (
-            mouseX >= groundX - halfWidth &&
-            mouseX <= groundX + halfWidth &&
-            mouseY >= groundY - halfHeight &&
-            mouseY <= groundY + halfHeight
+        // Check if mouse is within the ground image bounds OR near the connection node
+        const inImageBounds = (
+            mouseX >= imageX - halfWidth &&
+            mouseX <= imageX + halfWidth &&
+            mouseY >= imageY - halfHeight &&
+            mouseY <= imageY + halfHeight
         );
+        
+        const inNodeBounds = (
+            mouseX >= nodeX - 5 &&
+            mouseX <= nodeX + 5 &&
+            mouseY >= nodeY - 5 &&
+            mouseY <= nodeY + 5
+        );
+        
+        return inImageBounds || inNodeBounds;
     }
 }
