@@ -144,6 +144,9 @@ export class CircuitRenderer {
         // Render selection box overlay (after transformations are restored)
         this.renderSelectionBox();
         
+        // Render zoom message if active
+        this.renderZoomMessage();
+        
         // Render bounding box for multiple selected elements (disabled for now)
         // this.renderSelectionBoundingBox();
     }
@@ -223,42 +226,72 @@ export class CircuitRenderer {
     }
 
     /**
-     * Show a temporary message in the top-left corner of the canvas
+     * Show a temporary message directly on the canvas
      * @param {string} message - The message to display
      */
     showZoomMessage(message) {
-        // Create or get existing message element
-        let messageElement = document.getElementById('zoom-message');
-        if (!messageElement) {
-            messageElement = document.createElement('div');
-            messageElement.id = 'zoom-message';
-            messageElement.style.cssText = `
-                position: absolute;
-                top: 10px;
-                left: 10px;
-                background: rgba(0, 0, 0, 0.8);
-                color: white;
-                padding: 8px 12px;
-                border-radius: 4px;
-                font-family: Arial, sans-serif;
-                font-size: 12px;
-                z-index: 1000;
-                pointer-events: none;
-                opacity: 0;
-                transition: opacity 0.3s ease;
-            `;
-            this.canvas.parentElement.appendChild(messageElement);
-        }
-
-        // Update message and show it
-        messageElement.textContent = message;
-        messageElement.style.opacity = '1';
-
-        // Hide after 2 seconds
+        // Store the message to be rendered on the canvas
+        this.zoomMessage = {
+            text: message,
+            timestamp: Date.now(),
+            duration: 2000 // Show for 2 seconds
+        };
+        
+        // Trigger a render to show the message
+        this.render();
+        
+        // Clear the message after duration
         clearTimeout(this.messageTimeout);
         this.messageTimeout = setTimeout(() => {
-            messageElement.style.opacity = '0';
-        }, 2000);
+            this.zoomMessage = null;
+            this.render(); // Re-render to remove the message
+        }, this.zoomMessage.duration);
+    }
+
+    /**
+     * Render the zoom message on the canvas
+     */
+    renderZoomMessage() {
+        if (!this.zoomMessage) return;
+        
+        const ctx = this.context;
+        const message = this.zoomMessage.text;
+        
+        // Calculate fade effect based on time remaining
+        const elapsed = Date.now() - this.zoomMessage.timestamp;
+        const remaining = this.zoomMessage.duration - elapsed;
+        const fadeTime = 500; // Fade out over last 500ms
+        let opacity = 1;
+        
+        if (remaining < fadeTime) {
+            opacity = remaining / fadeTime;
+        }
+        
+        // Set up text styling
+        ctx.save();
+        ctx.font = '14px Arial, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        
+        // Position in top-left corner with some padding
+        const padding = 10;
+        const x = padding;
+        const y = padding;
+        
+        // Draw background
+        const textMetrics = ctx.measureText(message);
+        const bgPadding = 8;
+        const bgWidth = textMetrics.width + bgPadding * 2;
+        const bgHeight = 16 + bgPadding * 2;
+        
+        ctx.fillStyle = `rgba(0, 0, 0, ${0.8 * opacity})`;
+        ctx.fillRect(x - bgPadding, y - bgPadding, bgWidth, bgHeight);
+        
+        // Draw text
+        ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
+        ctx.fillText(message, x, y);
+        
+        ctx.restore();
     }
 
     /**
