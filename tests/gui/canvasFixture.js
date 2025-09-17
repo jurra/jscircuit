@@ -20,6 +20,12 @@ export function createMockCanvas() {
             restore: sinon.spy(),
             translate: sinon.spy(),
             scale: sinon.spy(),
+            rotate: sinon.spy(),
+            resetTransform: sinon.spy(),
+            setTransform: sinon.spy(),
+            transform: sinon.spy(),
+            isPointInPath: sinon.stub().returns(false),
+            isPointInStroke: sinon.stub().returns(false),
             // Add properties that ResistorRenderer sets
             strokeStyle: '#000000',
             fillStyle: '#000000',

@@ -303,9 +303,11 @@ export class CircuitService extends EventEmitter {
       });
 
       // Update the element's orientation property (for elements that track orientation)
-      const currentOrientation = element.properties.values.orientation || 0;
+      const currentOrientation = element.properties?.values?.orientation || 0;
       const newOrientation = (currentOrientation + rotationAngleDegrees) % 360;
-      element.properties.updateProperty('orientation', newOrientation);
+      if (element.properties && element.properties.updateProperty) {
+        element.properties.updateProperty('orientation', newOrientation);
+      }
     });
     
     // Emit update to trigger immediate re-render
@@ -343,10 +345,44 @@ export class CircuitService extends EventEmitter {
    * @param {number} newOrientation - The new orientation (0, 90, 180, or 270 degrees).
    */
   rotateElement(elementId, newOrientation) {
-    // Use the new group rotation method for single elements
-    const currentOrientation = this.circuit.elements.find(el => el.id === elementId)?.properties.values.orientation || 0;
+    const element = this.circuit.elements.find(el => el.id === elementId);
+    if (!element) return;
+    
+    // For single element rotation, rotate around first node
+    const currentOrientation = element?.properties?.values?.orientation || 0;
     const rotationAngle = newOrientation - currentOrientation;
-    this.rotateElements([elementId], rotationAngle);
+    
+    // Calculate rotation in radians
+    const rotationAngleRad = (rotationAngle * Math.PI) / 180;
+    
+    // Use first node as rotation center for single element rotation
+    const centerX = element.nodes[0].x;
+    const centerY = element.nodes[0].y;
+    
+    // Rotate all nodes around the first node
+    element.nodes.forEach(node => {
+      // Translate node to origin (relative to first node)
+      const relativeX = node.x - centerX;
+      const relativeY = node.y - centerY;
+      
+      // Apply rotation matrix
+      const cos = Math.cos(rotationAngleRad);
+      const sin = Math.sin(rotationAngleRad);
+      const rotatedX = relativeX * cos - relativeY * sin;
+      const rotatedY = relativeX * sin + relativeY * cos;
+      
+      // Translate back to absolute coordinates
+      node.x = centerX + rotatedX;
+      node.y = centerY + rotatedY;
+    });
+    
+    // Update orientation property
+    if (element.properties && element.properties.updateProperty) {
+      element.properties.updateProperty('orientation', newOrientation);
+    }
+    
+    // Emit update to trigger immediate re-render
+    this.emit("update", { type: "rotateElement", elementId, rotationAngle });
   }
 
   /**
