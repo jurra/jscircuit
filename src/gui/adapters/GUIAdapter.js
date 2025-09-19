@@ -156,8 +156,16 @@ export class GUIAdapter {
         'ArrowDown': 'Down'
       };
       
+      // Map special keys to match menu config names
+      const specialKeyMap = {
+        'Delete': 'Del',
+        'Backspace': 'Del'  // Both Del and Backspace should trigger delete
+      };
+      
       if (arrowMap[key]) {
         key = arrowMap[key];
+      } else if (specialKeyMap[key]) {
+        key = specialKeyMap[key];
       } else if (key.length === 1) {
         key = key.toUpperCase();
       }

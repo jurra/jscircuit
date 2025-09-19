@@ -24,6 +24,8 @@ import { DrawWireCommand } from "../gui/commands/DrawWireCommand.js";
 import { DragElementCommand } from "../gui/commands/GUIDragElementCommand.js";
 import { SelectElementCommand } from "../gui/commands/SelectElementCommand.js";
 import { MultiSelectElementCommand } from "../gui/commands/MultiSelectElementCommand.js";
+import { DeleteElementCommand } from "../gui/commands/DeleteElementCommand.js";
+import { DeleteAllCommand } from "../gui/commands/DeleteAllCommand.js";
 import { WireSplitService } from "../application/WireSplitService.js";
 
 // Register elements once
@@ -139,21 +141,11 @@ export function setupCommands(circuitService, circuitRenderer) {
     }
 
     if (!GUICommandRegistry.getTypes().includes("deleteSelection")) {
-        GUICommandRegistry.register("deleteSelection", () => ({
-            execute: () => console.log("Delete Selection not implemented yet"),
-            undo: () => console.log("Delete Selection undo not implemented yet")
-        }));
+        GUICommandRegistry.register("deleteSelection", () => new DeleteElementCommand(circuitService, circuitRenderer));
     }
 
     if (!GUICommandRegistry.getTypes().includes("deleteAll")) {
-        GUICommandRegistry.register("deleteAll", () => ({
-            execute: () => {
-                console.log("Delete All executing");
-                circuitService.circuit.elements = [];
-                circuitService.emit("update");
-            },
-            undo: () => console.log("Delete All undo not implemented yet")
-        }));
+        GUICommandRegistry.register("deleteAll", () => new DeleteAllCommand(circuitService, circuitRenderer));
     }
 
     if (!GUICommandRegistry.getTypes().includes("deselectAll")) {
