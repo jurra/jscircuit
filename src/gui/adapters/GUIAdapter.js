@@ -246,6 +246,12 @@ export class GUIAdapter {
           return;
         }
 
+        // If user is creating a non-wire element while in wire drawing mode, exit wire mode
+        if (spec.name === "addElement" && this.wireDrawingMode && spec.args && spec.args[0] !== "Wire") {
+          this.resetCursor();
+          console.log("[GUIAdapter] Wire drawing mode deactivated - creating", spec.args[0]);
+        }
+
         const args = spec.args ?? [];
         const cmd = this.guiCommandRegistry.get(
           spec.name,
@@ -376,31 +382,37 @@ export class GUIAdapter {
 
       // Regular command start
       if (event.button === 0) {
-        const element = this.findElementAt(offsetX, offsetY);
-
-        // If clicking on an element, select it first
-        if (element) {
-          const selectCommand = this.guiCommandRegistry.get("selectElement");
-          if (selectCommand) {
-            selectCommand.execute(element);
-          }
-        }
-
-        // Determine which command to start based on context
-        if (element) {
-          // Clicking on an element always starts drag
-          this.activeCommand = this.guiCommandRegistry.get("dragElement", this.circuitService);
-        } else if (this.wireDrawingMode) {
-          // Only start wire drawing if wire mode is active
+        // Wire drawing mode takes priority over all other interactions
+        if (this.wireDrawingMode) {
+          // In wire drawing mode, always start wire drawing regardless of what's under the cursor
+          // This allows drawing wire nodes on top of existing nodes/elements
+          console.log("[GUIAdapter] Wire drawing mode: creating wire node at", offsetX, offsetY);
           this.activeCommand = this.guiCommandRegistry.get(
             "drawWire",
             this.circuitService,
             this.elementRegistry,
           );
         } else {
-          // Clicking on empty space starts selection box
-          this.startSelectionBox(offsetX, offsetY);
-          this.activeCommand = null;
+          // Normal interaction logic when not in wire drawing mode
+          const element = this.findElementAt(offsetX, offsetY);
+
+          // If clicking on an element, select it first
+          if (element) {
+            const selectCommand = this.guiCommandRegistry.get("selectElement");
+            if (selectCommand) {
+              selectCommand.execute(element);
+            }
+          }
+
+          // Determine which command to start based on context
+          if (element) {
+            // Clicking on an element starts drag
+            this.activeCommand = this.guiCommandRegistry.get("dragElement", this.circuitService);
+          } else {
+            // Clicking on empty space starts selection box
+            this.startSelectionBox(offsetX, offsetY);
+            this.activeCommand = null;
+          }
         }
 
         if (this.activeCommand) {
@@ -505,6 +517,12 @@ export class GUIAdapter {
     // Listen to the element placement event
     this.circuitService.on("startPlacing", ({ element }) => {
       this.placingElement = element;
+      
+      // If user starts placing a non-wire element while in wire drawing mode, exit wire mode
+      if (this.wireDrawingMode && element.type !== 'wire') {
+        this.resetCursor();
+        console.log("[GUIAdapter] Wire drawing mode deactivated - placing", element.type);
+      }
     });
   }
 
