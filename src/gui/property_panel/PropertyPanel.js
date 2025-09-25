@@ -224,20 +224,9 @@ export class PropertyPanel {
             `;
         }).join('');
 
-        // Add orientation field for elements that have it
-        const orientationField = properties.values.hasOwnProperty('orientation') ? `
-            <div class="property-field">
-                <label for="orientation">Orientation</label>
-                <select id="orientation" name="orientation">
-                    <option value="0" ${properties.values.orientation === 0 ? 'selected' : ''}>Horizontal</option>
-                    <option value="90" ${properties.values.orientation === 90 ? 'selected' : ''}>Vertical</option>
-                </select>
-            </div>
-        ` : '';
-
         return `
             <div class="property-panel-header">
-                <h3>Circuit Editor</h3>
+                <h3>${elementType.toUpperCase()}</h3>
             </div>
             <div class="property-panel-content">
                 <div class="property-panel-title">
@@ -245,7 +234,6 @@ export class PropertyPanel {
                     <div class="help-text">${config.helpText}</div>
                 </div>
                 ${propertyFields}
-                ${orientationField}
                 <div class="property-field">
                     <label for="label">Label</label>
                     <input type="text" id="label" name="label" 
@@ -403,7 +391,7 @@ export class PropertyPanel {
                         properties[key] = numValue;
                     }
                 } else if (input.type === 'select-one' || input.tagName === 'SELECT') {
-                    // Handle select elements (like orientation)
+                    // Handle select elements
                     properties[key] = parseInt(value) || value;
                 } else {
                     properties[key] = value;
@@ -445,6 +433,13 @@ export class PropertyPanel {
         const style = document.createElement('style');
         style.id = 'property-panel-styles';
         style.textContent = `
+            /* Use the same font family as MenuBar for consistency */
+            .property-panel-overlay,
+            .property-panel,
+            .property-panel * {
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+            }
+
             .property-panel-overlay {
                 position: fixed;
                 top: 0;
@@ -460,27 +455,28 @@ export class PropertyPanel {
 
             .property-panel {
                 background: white;
-                border-radius: 8px;
-                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+                border-radius: 14px;
+                box-shadow: 0 14px 40px rgba(0,0,0,.28), 0 6px 16px rgba(0,0,0,.25);
                 width: 400px;
                 max-width: 90vw;
                 max-height: 90vh;
                 overflow: auto;
                 position: relative;
+                border: 1px solid #d0d0d0;
             }
 
             .property-panel-header {
-                background: #f0f0f0;
+                background: linear-gradient(#ecf3fb, #dbe6f4);
                 padding: 12px 20px;
-                border-bottom: 1px solid #ddd;
-                border-radius: 8px 8px 0 0;
+                border-bottom: 1px solid #c5d2e2;
+                border-radius: 14px 14px 0 0;
             }
 
             .property-panel-header h3 {
                 margin: 0;
                 font-size: 16px;
                 font-weight: 600;
-                color: #333;
+                color: #161616;
             }
 
             .property-panel-content {
@@ -518,21 +514,24 @@ export class PropertyPanel {
                 display: block;
                 margin-bottom: 5px;
                 font-weight: 500;
-                color: #333;
+                color: #161616;
                 font-size: 14px;
             }
 
-            .property-field input {
+            .property-field input,
+            .property-field select {
                 width: 100%;
                 padding: 8px 12px;
                 border: 2px solid #ddd;
-                border-radius: 4px;
+                border-radius: 8px;
                 font-size: 14px;
                 box-sizing: border-box;
                 transition: border-color 0.2s;
+                background: white;
             }
 
-            .property-field input:focus {
+            .property-field input:focus,
+            .property-field select:focus {
                 outline: none;
                 border-color: #007bff;
             }
@@ -547,25 +546,26 @@ export class PropertyPanel {
 
             .property-panel-actions {
                 padding: 15px 20px;
-                border-top: 1px solid #ddd;
+                border-top: 1px solid #c5d2e2;
                 text-align: right;
-                background: #f9f9f9;
-                border-radius: 0 0 8px 8px;
+                background: linear-gradient(#ecf3fb, #dbe6f4);
+                border-radius: 0 0 14px 14px;
             }
 
             .property-panel-actions button {
                 padding: 8px 16px;
-                border: 1px solid #ddd;
-                border-radius: 4px;
+                border: 1px solid #c5d2e2;
+                border-radius: 8px;
                 background: white;
                 cursor: pointer;
                 font-size: 14px;
                 margin-left: 8px;
-                transition: background-color 0.2s, border-color 0.2s;
+                transition: all 0.2s ease;
+                font-family: inherit;
             }
 
             .property-panel-actions button:hover {
-                background: #f0f0f0;
+                background: rgba(0,0,0,.08);
             }
 
             .property-panel-actions .ok-btn {
@@ -580,7 +580,7 @@ export class PropertyPanel {
             }
 
             .property-panel-actions .cancel-btn:hover {
-                background: #e9ecef;
+                background: rgba(0,0,0,.08);
             }
         `;
 
