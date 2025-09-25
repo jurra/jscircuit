@@ -14,6 +14,7 @@
 import { CircuitRenderer } from "../renderers/CircuitRenderer.js";
 import { CommandHistory } from "../commands/CommandHistory.js";
 import { ACTIONS, KEYMAP } from "../../config/menu.bindings.js";
+import { PropertyPanel } from "../property_panel/PropertyPanel.js";
 
 
 /**
@@ -111,6 +112,9 @@ export class GUIAdapter {
 
     // Pointer interactions on canvas
     this.setupCanvasInteractions();
+
+    // Property panel integration
+    this.setupPropertyPanel();
 
     // Re-render on domain state changes
     this.circuitService.on("update", () => this.circuitRenderer.render());
@@ -234,8 +238,11 @@ export class GUIAdapter {
 
     this._exec(spec);
 
-    // Domain ops will emit "update" → render() automatically; renderer ops may not.
-    this.circuitRenderer.render();
+    // Note: Domain operations (commands) will emit "update" → render() automatically via event listener.
+    // Only render manually for UI-only operations that don't trigger domain events.
+    if (spec.kind !== "command") {
+      this.circuitRenderer.render();
+    }
   }
 
   /**
@@ -383,8 +390,16 @@ export class GUIAdapter {
           element: this.placingElement,
         });
 
+        // Store reference to placed element for property panel
+        const placedElement = this.placingElement;
+        
         this.placingElement = null;
         this.circuitRenderer.render();
+        
+        // Open property panel immediately after placing element
+        console.log("[GUIAdapter] Auto-opening property panel for newly placed element:", placedElement.id);
+        this.handleElementDoubleClick(placedElement);
+        
         return;
       }
 
@@ -530,6 +545,38 @@ export class GUIAdapter {
       if (this.wireDrawingMode && element.type !== 'wire') {
         this.resetCursor();
         console.log("[GUIAdapter] Wire drawing mode deactivated - placing", element.type);
+      }
+    });
+  }
+
+  /**
+   * Sets up property panel integration with double-click handling.
+   */
+  setupPropertyPanel() {
+    // Set up double-click callback on the circuit renderer
+    this.circuitRenderer.setElementDoubleClickCallback((element) => {
+      this.handleElementDoubleClick(element);
+    });
+  }
+
+  /**
+   * Handles double-click on circuit elements to open property panel.
+   * @param {Object} element - The clicked circuit element
+   */
+  handleElementDoubleClick(element) {
+    console.log("[GUIAdapter] Double-click detected on element:", element);
+    if (!element) return;
+
+    // Open property panel for the element
+    this.propertyPanel = new PropertyPanel();
+    console.log("[GUIAdapter] Opening property panel for element:", element.id);
+    this.propertyPanel.show(element, (element, updatedProperties) => {
+      console.log("[GUIAdapter] Property panel save callback with properties:", updatedProperties);
+      // Handle property save - execute command
+      const command = this.guiCommandRegistry.get('updateElementProperties');
+      if (command) {
+        command.setData(element.id, updatedProperties);
+        this.commandHistory.executeCommand(command, this.circuitService);
       }
     });
   }

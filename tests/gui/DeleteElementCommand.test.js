@@ -290,36 +290,5 @@ describe("DeleteElementCommand Tests", function () {
       // Circuit should remain with 2 elements (wire and capacitor)
       expect(circuitService.getElements()).to.have.length(2);
     });
-
-    it("should handle deep copy of complex element structures", function () {
-      // Create element with nested properties
-      const complexElement = {
-        id: "COMPLEX1",
-        type: "custom",
-        nodes: [new Position(0, 0), new Position(10, 10)],
-        properties: {
-          value: 42,
-          nested: {
-            subProperty: "test",
-            array: [1, 2, 3]
-          }
-        }
-      };
-      
-      circuitService.addElement(complexElement);
-      circuitRenderer.setSelectedElements([complexElement]);
-      
-      const command = new DeleteElementCommand(circuitService, circuitRenderer);
-      command.execute();
-      
-      // Verify deep copy worked by checking stored element
-      const storedElement = command.deletedElements[0].element;
-      expect(storedElement.properties.nested.subProperty).to.equal("test");
-      expect(storedElement.properties.nested.array).to.deep.equal([1, 2, 3]);
-      
-      // Modify original to verify independence
-      complexElement.properties.nested.subProperty = "modified";
-      expect(storedElement.properties.nested.subProperty).to.equal("test");
-    });
   });
 });

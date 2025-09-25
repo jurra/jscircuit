@@ -63,6 +63,10 @@ export class DeleteAllCommand extends GUICommand {
       this.circuitService.addElement(element);
     });
     
+    // Clear the deleted elements array after successful restoration
+    // This prevents multiple undo calls from trying to add the same elements again
+    this.deletedElements = [];
+    
     console.log("[DeleteAllCommand] All elements restored successfully");
   }
 

@@ -194,6 +194,56 @@ export class CircuitService extends EventEmitter {
   }
 
   /**
+   * Gets a specific element by its ID.
+   *
+   * @param {string} elementId - The ID of the element to find.
+   * @returns {Element|null} The element with the given ID, or null if not found.
+   */
+  getElementByID(elementId) {
+    return this.circuit.elements.find(el => el.id === elementId) || null;
+  }
+
+  /**
+   * Updates properties and label of an existing element through the service.
+   * This maintains proper aggregate boundary and ensures state consistency.
+   *
+   * @param {string} elementId - The ID of the element to update.
+   * @param {Object} newProperties - Object containing new property values and label.
+   * @returns {boolean} True if element was found and updated, false otherwise.
+   */
+  updateElementProperties(elementId, newProperties) {
+    console.log("[CircuitService] Updating element properties:", { elementId, newProperties });
+    const element = this.getElementByID(elementId);
+    if (!element) {
+      console.warn(`[CircuitService] Element with ID ${elementId} not found for property update`);
+      return false;
+    }
+
+    // Update label if provided
+    if (newProperties.label !== undefined) {
+      console.log("[CircuitService] Updating label to:", newProperties.label);
+      element.label = newProperties.label;
+    }
+
+    // Update element-specific properties through the Properties container
+    const properties = element.getProperties();
+    Object.keys(newProperties).forEach(key => {
+      if (key !== 'label') { // Label is handled separately
+        console.log("[CircuitService] Updating property:", key, "=", newProperties[key], "type:", typeof newProperties[key]);
+        properties.updateProperty(key, newProperties[key]);
+      }
+    });
+
+    // Emit update event to notify listeners (like the renderer)
+    this.emit("update", {
+      type: "updateElement",
+      element: element
+    });
+
+    return true;
+  }
+
+  /**
    * Serializes the entire state of the circuit for undo/redo or persistence.
    *
    * @returns {string} A JSON string representing the circuit state.
