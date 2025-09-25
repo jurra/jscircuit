@@ -5,6 +5,7 @@ import { generateId } from "../utils/idGenerator.js";
 import { ElementRegistry } from "../config/settings.js";
 import { Position } from "../domain/valueObjects/Position.js";
 import { Properties } from "../domain/valueObjects/Properties.js";
+import { Label } from "../domain/valueObjects/Label.js";
 
 /**
  * CircuitService orchestrates operations on the Circuit aggregate,
@@ -211,39 +212,36 @@ export class CircuitService extends EventEmitter {
    * @param {Object} newProperties - Object containing new property values and label.
    * @returns {boolean} True if element was found and updated, false otherwise.
    */
-  updateElementProperties(elementId, newProperties) {
-    console.log("[CircuitService] Updating element properties:", { elementId, newProperties });
-    const element = this.getElementByID(elementId);
-    if (!element) {
-      console.warn(`[CircuitService] Element with ID ${elementId} not found for property update`);
-      return false;
-    }
+    updateElementProperties(elementId, newProperties) {
+        try {
+            const element = this.getElementByID(elementId);
+            if (!element) {
+                console.error(`Element with ID ${elementId} not found`);
+                return false;
+            }
 
-    // Update label if provided
-    if (newProperties.label !== undefined) {
-      console.log("[CircuitService] Updating label to:", newProperties.label);
-      element.label = newProperties.label;
-    }
+            // Update the label if provided
+            if (newProperties.label !== undefined) {
+                if (newProperties.label === null || newProperties.label === '') {
+                    element.label = null;
+                } else {
+                    element.label = new Label(newProperties.label);
+                }
+            }
 
-    // Update element-specific properties through the Properties container
-    const properties = element.getProperties();
-    Object.keys(newProperties).forEach(key => {
-      if (key !== 'label') { // Label is handled separately
-        console.log("[CircuitService] Updating property:", key, "=", newProperties[key], "type:", typeof newProperties[key]);
-        properties.updateProperty(key, newProperties[key]);
-      }
-    });
+            // Update other properties
+            Object.keys(newProperties).forEach(key => {
+                if (key !== 'label') {
+                    element.getProperties().updateProperty(key, newProperties[key]);
+                }
+            });
 
-    // Emit update event to notify listeners (like the renderer)
-    this.emit("update", {
-      type: "updateElement",
-      element: element
-    });
-
-    return true;
-  }
-
-  /**
+            return true;
+        } catch (error) {
+            console.error('Error updating element properties:', error);
+            return false;
+        }
+    }  /**
    * Serializes the entire state of the circuit for undo/redo or persistence.
    *
    * @returns {string} A JSON string representing the circuit state.
@@ -253,6 +251,7 @@ export class CircuitService extends EventEmitter {
       elements: this.circuit.elements.map((el) => ({
         id: el.id,
         type: el.type,
+        label: el.label ? el.label.value : null, //  Export label value, not Label object
         nodes: el.nodes.map((pos) => ({ x: pos.x, y: pos.y })),
         properties: { ...el.properties.values }, //  flatten properties
       }))
@@ -294,7 +293,10 @@ export class CircuitService extends EventEmitter {
 
       const properties = new Properties(cleanProps);
 
-      const el = factory(elData.id, nodes, elData.label ?? null, properties);
+      // Create Label object from label string if present
+      const labelObj = elData.label ? new Label(elData.label) : null;
+
+      const el = factory(elData.id, nodes, labelObj, properties);
       elementsById[el.id] = el;
       this.circuit.elements.push(el);
     }

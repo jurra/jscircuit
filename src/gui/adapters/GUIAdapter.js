@@ -572,7 +572,7 @@ export class GUIAdapter {
     console.log("[GUIAdapter] Opening property panel for element:", element.id);
     this.propertyPanel.show(element, (element, updatedProperties) => {
       console.log("[GUIAdapter] Property panel save callback with properties:", updatedProperties);
-      // Handle property save - execute command
+      // Handle property save - get fresh command instance 
       const command = this.guiCommandRegistry.get('updateElementProperties');
       if (command) {
         command.setData(element.id, updatedProperties);

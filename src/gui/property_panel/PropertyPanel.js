@@ -107,7 +107,7 @@ export class PropertyPanel {
                     <div class="property-field">
                         <label for="inductance">Inductance</label>
                         <input type="number" id="inductance" name="inductance" 
-                               value="${properties.get('inductance') || ''}" 
+                               value="${properties.values.inductance || ''}" 
                                step="any" placeholder="Enter inductance value">
                     </div>
                 `;
@@ -119,7 +119,7 @@ export class PropertyPanel {
                     <div class="property-field">
                         <label for="resistance">Resistance</label>
                         <input type="number" id="resistance" name="resistance" 
-                               value="${properties.get('resistance') || ''}" 
+                               value="${properties.values.resistance || ''}" 
                                step="any" placeholder="Enter resistance value">
                     </div>
                 `;
@@ -131,7 +131,7 @@ export class PropertyPanel {
                     <div class="property-field">
                         <label for="capacitance">Capacitance</label>
                         <input type="number" id="capacitance" name="capacitance" 
-                               value="${properties.get('capacitance') || ''}" 
+                               value="${properties.values.capacitance || ''}" 
                                step="any" placeholder="Enter capacitance value">
                     </div>
                 `;
@@ -143,7 +143,7 @@ export class PropertyPanel {
                     <div class="property-field">
                         <label for="inductance">Inductance</label>
                         <input type="number" id="inductance" name="inductance" 
-                               value="${properties.get('inductance') || ''}" 
+                               value="${properties.values.inductance || ''}" 
                                step="any" placeholder="Enter inductance value">
                     </div>
                 `;

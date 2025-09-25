@@ -39,19 +39,14 @@ export class UpdateElementPropertiesCommand extends GUICommand {
      */
     execute() {
         if (!this.elementId || !this.newProperties) {
-            console.log("[UpdateElementPropertiesCommand] Missing element ID or properties");
             return;
         }
-
-        console.log(`[UpdateElementPropertiesCommand] Updating properties for element ${this.elementId}`);
 
         // Use CircuitService to update properties (maintains aggregate boundary)
         const success = this.circuitService.updateElementProperties(this.elementId, this.newProperties);
         
         if (!success) {
-            console.log(`[UpdateElementPropertiesCommand] Failed to update element ${this.elementId}`);
-        } else {
-            console.log(`[UpdateElementPropertiesCommand] Properties updated successfully`);
+            console.error(`Failed to update element ${this.elementId}`);
         }
     }
 
