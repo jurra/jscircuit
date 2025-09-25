@@ -398,7 +398,7 @@ export class GUIAdapter {
         
         // Open property panel immediately after placing element
         console.log("[GUIAdapter] Auto-opening property panel for newly placed element:", placedElement.id);
-        this.handleElementDoubleClick(placedElement);
+        this.handleElementDoubleClick(placedElement, true); // true indicates this is a newly placed element
         
         return;
       }
@@ -562,23 +562,41 @@ export class GUIAdapter {
   /**
    * Handles double-click on circuit elements to open property panel.
    * @param {Object} element - The clicked circuit element
+   * @param {boolean} isNewlyPlaced - Whether this element was just placed (true) or is being edited (false)
    */
-  handleElementDoubleClick(element) {
+  handleElementDoubleClick(element, isNewlyPlaced = false) {
     console.log("[GUIAdapter] Double-click detected on element:", element);
     if (!element) return;
 
     // Open property panel for the element
     this.propertyPanel = new PropertyPanel();
-    console.log("[GUIAdapter] Opening property panel for element:", element.id);
-    this.propertyPanel.show(element, (element, updatedProperties) => {
-      console.log("[GUIAdapter] Property panel save callback with properties:", updatedProperties);
-      // Handle property save - get fresh command instance 
-      const command = this.guiCommandRegistry.get('updateElementProperties');
-      if (command) {
-        command.setData(element.id, updatedProperties);
-        this.commandHistory.executeCommand(command, this.circuitService);
+    console.log("[GUIAdapter] Opening property panel for element:", element.id, "newly placed:", isNewlyPlaced);
+    this.propertyPanel.show(element,
+      // onSave callback
+      (element, updatedProperties) => {
+        console.log("[GUIAdapter] Property panel save callback with properties:", updatedProperties);
+        // Handle property save - get fresh command instance
+        const command = this.guiCommandRegistry.get('updateElementProperties');
+        if (command) {
+          command.setData(element.id, updatedProperties);
+          this.commandHistory.executeCommand(command, this.circuitService);
+        }
+      },
+      // onCancel callback
+      () => {
+        console.log("[GUIAdapter] Property panel cancelled for element:", element.id, "newly placed:", isNewlyPlaced);
+        if (isNewlyPlaced) {
+          // If this element was just placed and user cancelled, delete it
+          console.log("[GUIAdapter] Removing newly placed element due to cancellation:", element.id);
+          const deleteCommand = this.guiCommandRegistry.get('deleteSelection');
+          if (deleteCommand) {
+            // Set the element as selected first so deleteSelection can delete it
+            this.circuitRenderer.setSelectedElements([element]);
+            this.commandHistory.executeCommand(deleteCommand, this.circuitService);
+          }
+        }
       }
-    });
+    );
   }
 
   /**

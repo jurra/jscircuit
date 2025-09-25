@@ -341,11 +341,87 @@ export class PropertyPanel {
     handleSave() {
         const newProperties = this.collectFormData();
         
+        // Validation: Check if at least a label or one property is specified
+        const hasLabel = newProperties.label && newProperties.label.trim() !== '';
+        const hasProperties = Object.keys(newProperties).some(key =>
+            key !== 'label' && newProperties[key] !== undefined && newProperties[key] !== ''
+        );
+        
+        if (!hasLabel && !hasProperties) {
+            this.showValidationWarning();
+            return;
+        }
+        
         if (this.onSave) {
             this.onSave(this.currentElement, newProperties);
         }
         
         this.hide();
+    }
+
+    /**
+     * Show validation warning dialog
+     * @private
+     */
+    showValidationWarning() {
+        // Create warning dialog
+        const warningOverlay = document.createElement('div');
+        warningOverlay.className = 'property-panel-warning-overlay';
+        
+        const warningDialog = document.createElement('div');
+        warningDialog.className = 'property-panel-warning-dialog';
+        
+        warningDialog.innerHTML = `
+            <div class="warning-header">
+                <h4>⚠️ Incomplete Properties</h4>
+            </div>
+            <div class="warning-content">
+                <p>Please specify at least one of the following:</p>
+                <ul>
+                    <li>A label for the component</li>
+                    <li>A property value (resistance, capacitance, etc.)</li>
+                </ul>
+                <p>This ensures the component can be properly identified and used in the circuit.</p>
+            </div>
+            <div class="warning-actions">
+                <button type="button" class="warning-ok-btn">OK</button>
+            </div>
+        `;
+        
+        warningOverlay.appendChild(warningDialog);
+        document.body.appendChild(warningOverlay);
+        
+        // Add warning dialog styles
+        this.addWarningStyles();
+        
+        // Handle warning dialog close
+        const okBtn = warningDialog.querySelector('.warning-ok-btn');
+        okBtn.addEventListener('click', () => {
+            document.body.removeChild(warningOverlay);
+            // Focus on the label input to guide user
+            const labelInput = this.panelElement.querySelector('#label');
+            if (labelInput) {
+                labelInput.focus();
+            }
+        });
+        
+        // Close on overlay click
+        warningOverlay.addEventListener('click', (event) => {
+            if (event.target === warningOverlay) {
+                document.body.removeChild(warningOverlay);
+            }
+        });
+        
+        // Close on Escape key
+        const handleEscape = (event) => {
+            if (event.key === 'Escape') {
+                document.removeEventListener('keydown', handleEscape);
+                if (document.body.contains(warningOverlay)) {
+                    document.body.removeChild(warningOverlay);
+                }
+            }
+        };
+        document.addEventListener('keydown', handleEscape);
     }
 
     /**
@@ -581,6 +657,127 @@ export class PropertyPanel {
 
             .property-panel-actions .cancel-btn:hover {
                 background: rgba(0,0,0,.08);
+            }
+        `;
+
+        document.head.appendChild(style);
+    }
+
+    /**
+     * Add warning dialog styles
+     * @private
+     */
+    addWarningStyles() {
+        // Check if warning styles already exist
+        if (document.querySelector('#property-panel-warning-styles')) {
+            return;
+        }
+
+        const style = document.createElement('style');
+        style.id = 'property-panel-warning-styles';
+        style.textContent = `
+            .property-panel-warning-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.6);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 1001;
+                animation: fadeIn 0.15s ease-out;
+            }
+
+            .property-panel-warning-dialog {
+                background: white;
+                border-radius: 12px;
+                box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+                max-width: 400px;
+                width: 90%;
+                max-height: 90vh;
+                overflow-y: auto;
+                animation: slideIn 0.2s ease-out;
+                border: 1px solid #e0e0e0;
+            }
+
+            .warning-header {
+                padding: 20px 20px 0 20px;
+                border-bottom: 1px solid #f0f0f0;
+                margin-bottom: 20px;
+            }
+
+            .warning-header h4 {
+                margin: 0 0 15px 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+                font-size: 18px;
+                font-weight: 600;
+                color: #d73a49;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            .warning-content {
+                padding: 0 20px;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+                font-size: 14px;
+                line-height: 1.5;
+                color: #161616;
+            }
+
+            .warning-content ul {
+                margin: 10px 0;
+                padding-left: 20px;
+            }
+
+            .warning-content li {
+                margin-bottom: 5px;
+            }
+
+            .warning-actions {
+                padding: 20px;
+                display: flex;
+                justify-content: flex-end;
+                gap: 10px;
+                border-top: 1px solid #f0f0f0;
+                margin-top: 20px;
+            }
+
+            .warning-ok-btn {
+                padding: 8px 16px;
+                background: #007bff;
+                color: white;
+                border: 2px solid #007bff;
+                border-radius: 6px;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+                font-size: 14px;
+                font-weight: 500;
+                cursor: pointer;
+                transition: all 0.15s ease;
+                min-width: 80px;
+            }
+
+            .warning-ok-btn:hover {
+                background: #0056b3;
+                border-color: #0056b3;
+            }
+
+            @keyframes fadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+
+            @keyframes slideIn {
+                from {
+                    opacity: 0;
+                    transform: translate(-50%, -48%) scale(0.9);
+                }
+                to {
+                    opacity: 1;
+                    transform: translate(-50%, -50%) scale(1);
+                }
             }
         `;
 
