@@ -86,6 +86,8 @@ export class GUIAdapter {
     this.selectionBox = null; // Selection box state: { startX, startY, endX, endY }
     /** @private */
     this.isSelecting = false; // True when drawing selection box
+    /** @private */
+    this.currentMousePos = { x: 0, y: 0 }; // Track current mouse position for immediate placement
 
     // Listener refs for clean disposal
     /** @private */ this._onMenuAction = null;
@@ -489,6 +491,10 @@ export class GUIAdapter {
     // Move / live placement preview / command move
     this.canvas.addEventListener("mousemove", (event) => {
       const { offsetX, offsetY } = this.getTransformedMousePosition(event);
+      
+      // Always track current mouse position for immediate element placement
+      this.currentMousePos.x = offsetX;
+      this.currentMousePos.y = offsetY;
 
       // Live update for placing element
       if (this.placingElement) {
@@ -582,6 +588,23 @@ export class GUIAdapter {
       // This ensures rotation during placement only affects the placing element
       this.circuitRenderer.setSelectedElements([element]);
       console.log("[GUIAdapter] Placing element selected for rotation:", element.id);
+      
+      // Immediately position the element at the current mouse position
+      // This prevents the element from staying at default coordinates until mouse movement
+      const snappedX = Math.round(this.currentMousePos.x / 10) * 10;
+      const snappedY = Math.round(this.currentMousePos.y / 10) * 10;
+      const width = 60;
+
+      element.nodes[0].x = snappedX - width / 2;
+      element.nodes[0].y = snappedY;
+      element.nodes[1].x = snappedX + width / 2;
+      element.nodes[1].y = snappedY;
+
+      // Emit update to immediately show the element at the correct position
+      this.circuitService.emit("update", {
+        type: "movePreview",
+        element: element,
+      });
       
       // If user starts placing a non-wire element while in wire drawing mode, exit wire mode
       if (this.wireDrawingMode && element.type !== 'wire') {
