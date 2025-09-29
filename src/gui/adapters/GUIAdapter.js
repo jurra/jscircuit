@@ -8,7 +8,21 @@
  * or to view-only renderer operations. State changes emit "update" → Renderer re-renders.
  *
  * Data flow:
- *   UI events → GUIAdapter.handleAction(id) → (Command|History|Renderer) → CircuitService emits "update" → CircuitRenderer
+ *   UI events → GUI      if (this.placingElement) {
+        const snappedX = Math.round(offsetX / 10) * 10;
+        const snappedY = Math.round(offsetY / 10) * 10;
+        const width = 60;
+
+        // Get current orientation from element properties (preserve rotation)
+        const currentOrientation = this.placingElement.properties?.values?.orientation || 0;
+        const angleRad = (currentOrientation * Math.PI) / 180;
+        
+        // Calculate node positions based on current rotation
+        const halfWidth = width / 2;
+        this.placingElement.nodes[0].x = snappedX - halfWidth * Math.cos(angleRad);
+        this.placingElement.nodes[0].y = snappedY - halfWidth * Math.sin(angleRad);
+        this.placingElement.nodes[1].x = snappedX + halfWidth * Math.cos(angleRad);
+        this.placingElement.nodes[1].y = snappedY + halfWidth * Math.sin(angleRad);andleAction(id) → (Command|History|Renderer) → CircuitService emits "update" → CircuitRenderer
  */
 
 import { CircuitRenderer } from "../renderers/CircuitRenderer.js";
@@ -192,13 +206,8 @@ export class GUIAdapter {
       if (e.key === 'Escape' && this.placingElement) {
         console.log("[GUIAdapter] Element placement cancelled with Escape");
         
-        // Delete the placing element from the circuit
-        const deleteCommand = this.guiCommandRegistry.get('deleteSelection');
-        if (deleteCommand) {
-          // Set the placing element as selected first so deleteSelection can delete it
-          this.circuitRenderer.setSelectedElements([this.placingElement]);
-          this.commandHistory.executeCommand(deleteCommand, this.circuitService);
-        }
+        // Delete only the placing element, not all selected elements
+        this.circuitService.deleteElement(this.placingElement.id);
         
         // Clear placement mode
         this.placingElement = null;
@@ -427,10 +436,16 @@ export class GUIAdapter {
         const snappedY = Math.round(offsetY / 10) * 10;
         const width = 60;
 
-        this.placingElement.nodes[0].x = snappedX - width / 2;
-        this.placingElement.nodes[0].y = snappedY;
-        this.placingElement.nodes[1].x = snappedX + width / 2;
-        this.placingElement.nodes[1].y = snappedY;
+        // Get current orientation from element properties (preserve rotation)
+        const currentOrientation = this.placingElement.properties?.values?.orientation || 0;
+        const angleRad = (currentOrientation * Math.PI) / 180;
+        
+        // Calculate node positions based on current rotation
+        const halfWidth = width / 2;
+        this.placingElement.nodes[0].x = snappedX - halfWidth * Math.cos(angleRad);
+        this.placingElement.nodes[0].y = snappedY - halfWidth * Math.sin(angleRad);
+        this.placingElement.nodes[1].x = snappedX + halfWidth * Math.cos(angleRad);
+        this.placingElement.nodes[1].y = snappedY + halfWidth * Math.sin(angleRad);
 
         this.circuitService.emit("update", {
           type: "finalizePlacement",
@@ -441,8 +456,8 @@ export class GUIAdapter {
         const placedElement = this.placingElement;
         
         this.placingElement = null;
-        // Clear selection since placement is complete
-        this.circuitRenderer.setSelectedElements([]);
+        // Keep the placed element selected for user convenience
+        this.circuitRenderer.setSelectedElements([placedElement]);
         this.circuitRenderer.render();
         
         // Open property panel immediately after placing element
@@ -600,10 +615,10 @@ export class GUIAdapter {
     this.circuitService.on("startPlacing", ({ element }) => {
       this.placingElement = element;
       
-      // Clear existing selection and select the placing element
+      // Clear existing selections and select only the placing element
       // This ensures rotation during placement only affects the placing element
       this.circuitRenderer.setSelectedElements([element]);
-      console.log("[GUIAdapter] Placing element selected for rotation:", element.id);
+      console.log("[GUIAdapter] Starting placement mode - selected placing element:", element.id);
       
       // Immediately position the element at the current mouse position
       // This prevents the element from staying at default coordinates until mouse movement
@@ -675,12 +690,11 @@ export class GUIAdapter {
         if (isNewlyPlaced) {
           // If this element was just placed and user cancelled, delete it
           console.log("[GUIAdapter] Removing newly placed element due to cancellation:", element.id);
-          const deleteCommand = this.guiCommandRegistry.get('deleteSelection');
-          if (deleteCommand) {
-            // Set the element as selected first so deleteSelection can delete it
-            this.circuitRenderer.setSelectedElements([element]);
-            this.commandHistory.executeCommand(deleteCommand, this.circuitService);
-          }
+          // Delete only the specific element, not all selected elements
+          this.circuitService.deleteElement(element.id);
+          // Clear selections since we deleted the element
+          this.circuitRenderer.setSelectedElements([]);
+          this.circuitRenderer.render();
         }
       }
     );
