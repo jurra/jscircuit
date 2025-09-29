@@ -186,6 +186,41 @@ export class GUIAdapter {
         return;
       }
 
+      // Handle Escape key to cancel element placement
+      if (e.key === 'Escape' && this.placingElement) {
+        console.log("[GUIAdapter] Element placement cancelled");
+        this.placingElement = null;
+        // Clear selection since placement was cancelled
+        this.circuitRenderer.setSelectedElements([]);
+        this.circuitRenderer.render();
+        e.preventDefault();
+        return;
+      }
+
+      // Handle rotation keys during element placement
+      if (this.placingElement && e.ctrlKey) {
+        let rotationAngle = 0;
+        
+        if (e.key === 'ArrowRight') {
+          rotationAngle = 90; // Rotate 90° clockwise
+          e.preventDefault();
+        } else if (e.key === 'ArrowLeft') {
+          rotationAngle = -90; // Rotate 90° counterclockwise
+          e.preventDefault();
+        } else if (e.key === 'ArrowUp') {
+          rotationAngle = 180; // Rotate 180°
+          e.preventDefault();
+        } else if (e.key === 'ArrowDown') {
+          rotationAngle = 180; // Rotate 180° (same as up for simple elements)
+          e.preventDefault();
+        }
+
+        if (rotationAngle !== 0) {
+          this.rotatePlacingElement(rotationAngle);
+          return;
+        }
+      }
+
       const sig = signature(e);
       const id = keymap[sig];
       if (!id) return;
@@ -394,6 +429,8 @@ export class GUIAdapter {
         const placedElement = this.placingElement;
         
         this.placingElement = null;
+        // Clear selection since placement is complete
+        this.circuitRenderer.setSelectedElements([]);
         this.circuitRenderer.render();
         
         // Open property panel immediately after placing element
@@ -540,6 +577,11 @@ export class GUIAdapter {
     // Listen to the element placement event
     this.circuitService.on("startPlacing", ({ element }) => {
       this.placingElement = element;
+      
+      // Clear existing selection and select the placing element
+      // This ensures rotation during placement only affects the placing element
+      this.circuitRenderer.setSelectedElements([element]);
+      console.log("[GUIAdapter] Placing element selected for rotation:", element.id);
       
       // If user starts placing a non-wire element while in wire drawing mode, exit wire mode
       if (this.wireDrawingMode && element.type !== 'wire') {
@@ -837,5 +879,64 @@ export class GUIAdapter {
       this.canvas.style.cursor = 'default';
     }
     this.wireDrawingMode = false;
+  }
+
+  /**
+   * Rotate the element currently being placed
+   * @param {number} angle - Rotation angle in degrees (90, -90, 180, etc.)
+   * @private
+   */
+  rotatePlacingElement(angle) {
+    if (!this.placingElement) return;
+
+    console.log(`[GUIAdapter] Rotating placing element by ${angle}°`);
+    
+    // Initialize properties if they don't exist
+    if (!this.placingElement.properties) {
+      console.warn("[GUIAdapter] Element missing properties, cannot set orientation");
+    } else {
+      // Initialize properties.values if it doesn't exist
+      if (!this.placingElement.properties.values) {
+        this.placingElement.properties.values = {};
+      }
+      
+      // Update element's orientation property
+      const currentOrientation = this.placingElement.properties.values.orientation || 0;
+      this.placingElement.properties.values.orientation = (currentOrientation + angle) % 360;
+      
+      // Normalize negative angles
+      if (this.placingElement.properties.values.orientation < 0) {
+        this.placingElement.properties.values.orientation += 360;
+      }
+    }
+    
+    // Get current element center
+    const centerX = (this.placingElement.nodes[0].x + this.placingElement.nodes[1].x) / 2;
+    const centerY = (this.placingElement.nodes[0].y + this.placingElement.nodes[1].y) / 2;
+    
+    // For most components, rotation changes the node positions
+    const width = 60; // Standard component width
+    const angleRad = (angle * Math.PI) / 180;
+    const currentAngleRad = Math.atan2(
+      this.placingElement.nodes[1].y - this.placingElement.nodes[0].y,
+      this.placingElement.nodes[1].x - this.placingElement.nodes[0].x
+    );
+    const newAngleRad = currentAngleRad + angleRad;
+    
+    // Calculate new node positions
+    const halfWidth = width / 2;
+    this.placingElement.nodes[0].x = centerX - halfWidth * Math.cos(newAngleRad);
+    this.placingElement.nodes[0].y = centerY - halfWidth * Math.sin(newAngleRad);
+    this.placingElement.nodes[1].x = centerX + halfWidth * Math.cos(newAngleRad);
+    this.placingElement.nodes[1].y = centerY + halfWidth * Math.sin(newAngleRad);
+    
+    // Emit update to trigger re-render with new rotation
+    this.circuitService.emit("update", {
+      type: "rotatePreview",
+      element: this.placingElement,
+    });
+    
+    // Force immediate re-render to show rotation
+    this.circuitRenderer.render();
   }
 }
