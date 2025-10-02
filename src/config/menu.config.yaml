@@ -63,8 +63,28 @@ menus:
 
       - id: rotateElement
         label: "Rotate Element"
-        shortcut: Ctrl+R
+        shortcut: Ctrl+E
         action: { kind: command, name: rotateElement }
+
+      - id: rotateElementRight
+        label: "Rotate Right"
+        shortcut: Ctrl+Right
+        action: { kind: command, name: rotateRight }
+
+      - id: rotateElementLeft
+        label: "Rotate Left"
+        shortcut: Ctrl+Left
+        action: { kind: command, name: rotateLeft }
+
+      - id: rotateElementUp
+        label: "Rotate Up"
+        shortcut: Ctrl+Up
+        action: { kind: command, name: rotateUp }
+
+      - id: rotateElementDown
+        label: "Rotate Down"
+        shortcut: Ctrl+Down
+        action: { kind: command, name: rotateDown }
 
   - label: Insert
     items:

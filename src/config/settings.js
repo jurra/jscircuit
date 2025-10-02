@@ -305,6 +305,39 @@ export function setupCommands(circuitService, circuitRenderer) {
         }));
     }
 
+    // Register general rotate element command (defaults to 90° clockwise)
+    if (!GUICommandRegistry.getTypes().includes("rotateElement")) {
+        GUICommandRegistry.register("rotateElement", (circuitService, circuitRenderer, elementRegistry) => ({
+            execute: () => {
+                const before = circuitService.exportState();
+                const selectedElements = circuitRenderer.getSelectedElements();
+
+                if (!selectedElements || selectedElements.length === 0) {
+                    console.log("[rotateElement] No elements selected");
+                    return { undo: () => {} }; // No-op if nothing selected
+                }
+
+                if (selectedElements.length > 1) {
+                    console.log("[rotateElement] Can only rotate one element at a time");
+                    return { undo: () => {} }; // No-op if multiple elements selected
+                }
+
+                // Get element IDs for single element rotation
+                const elementIds = selectedElements.map(element => element.id);
+
+                // Rotate 90 degrees clockwise (default rotation)
+                circuitService.rotateElements(elementIds, 90);
+
+                console.log(`[rotateElement] Rotated element 90° clockwise`);
+
+                return {
+                    undo: () => circuitService.importState(before)
+                };
+            },
+            undo: () => console.log("Rotate Element undo")
+        }));
+    }
+
     // Register save and open netlist commands
     if (!GUICommandRegistry.getTypes().includes("saveNetlist")) {
         GUICommandRegistry.register("saveNetlist", () =>
