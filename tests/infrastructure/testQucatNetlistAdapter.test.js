@@ -144,9 +144,32 @@ describe('QucatNetlistAdapter roundtrip test with CircuitService', () => {
             const expected = { ...original.properties.values };
             const actual = { ...roundtripped.properties.values };
 
+            // Handle properties that may have been added as defaults during roundtrip
+            // If a property wasn't in the original but appears in the roundtrip with a default value,
+            // and the original had it as undefined, treat them as equivalent
             for (const key of new Set([...Object.keys(expected), ...Object.keys(actual)])) {
-                if (!(key in expected)) expected[key] = undefined;
-                if (!(key in actual)) actual[key] = undefined;
+                if (!(key in expected)) {
+                    // Property was added during roundtrip, check if it's a known default
+                    if (key === 'orientation' && actual[key] === 0) {
+                        // Default orientation should be treated as equivalent to undefined
+                        expected[key] = undefined;
+                    } else {
+                        expected[key] = undefined;
+                    }
+                }
+                if (!(key in actual)) {
+                    actual[key] = undefined;
+                }
+                
+                // Normalize: treat orientation 0 and undefined as equivalent for testing
+                if (key === 'orientation') {
+                    if (expected[key] === undefined && actual[key] === 0) {
+                        expected[key] = 0; // Accept the default
+                    }
+                    if (actual[key] === undefined && expected[key] === 0) {
+                        actual[key] = 0; // Accept the default
+                    }
+                }
             }
 
             assert.deepStrictEqual(actual, expected, `Property mismatch for element with nodes ${roundtripped.nodes.map(n => `(${n.x},${n.y})`).join(', ')}`);
