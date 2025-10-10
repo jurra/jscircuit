@@ -29,6 +29,8 @@ import { CircuitRenderer } from "../renderers/CircuitRenderer.js";
 import { CommandHistory } from "../commands/CommandHistory.js";
 import { ACTIONS, KEYMAP } from "../../config/menu.bindings.js";
 import { PropertyPanel } from "../property_panel/PropertyPanel.js";
+import { Logger } from "../../utils/Logger.js";
+import { throttle } from "../../utils/PerformanceUtils.js";
 
 
 /**

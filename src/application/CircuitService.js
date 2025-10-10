@@ -6,6 +6,7 @@ import { ElementRegistry } from "../config/settings.js";
 import { Position } from "../domain/valueObjects/Position.js";
 import { Properties } from "../domain/valueObjects/Properties.js";
 import { Label } from "../domain/valueObjects/Label.js";
+import { Logger } from "../utils/Logger.js";
 
 /**
  * CircuitService orchestrates operations on the Circuit aggregate,
@@ -64,7 +65,7 @@ export class CircuitService extends EventEmitter {
 
           this.addElement(newElement);
         } catch (error) {
-          console.error(`Error creating element: ${error.message}`);
+          Logger.error(`Error creating element: ${error.message}`);
         }
       }
     });

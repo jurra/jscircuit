@@ -1,3 +1,7 @@
+import { Logger } from "../../utils/Logger.js";
+import { throttle, globalRenderScheduler, globalPerformanceMonitor } from "../../utils/PerformanceUtils.js";
+import { AdaptiveSpatialIndex, BoundingBox } from "../../utils/SpatialIndex.js";
+
 /**
  * @class CircuitRenderer
  * @description
@@ -9,6 +13,11 @@
  * - Manage rendering logic for the circuit.
  * - Delegate element-specific rendering to appropriate renderers via the `RendererFactory`.
  * - Handle user interactions such as dragging elements.
+ *
+ * **Performance Optimizations**:
+ * - Throttled mouse events to prevent excessive hover checks
+ * - RequestAnimationFrame-based render scheduling
+ * - Spatial optimization for element detectionww
  *
  * @example
  * const canvas = document.getElementById('circuitCanvas');
@@ -59,6 +68,22 @@ export class CircuitRenderer {
         // Keep backwards compatibility with single selection
         this.selectedElement = null;
 
+        // Performance optimizations
+        this.renderScheduled = false;
+        this.lastHoverCheck = 0;
+        this.HOVER_CHECK_THROTTLE = 16; // Max 60fps for hover checks
+        
+        // Spatial indexing for fast element detection
+        const initialBounds = new BoundingBox(-1000, -1000, 2000, 2000);
+        this.spatialIndex = new AdaptiveSpatialIndex(initialBounds, 10, 5);
+        this.spatialIndexNeedsUpdate = true;
+        
+        // Throttle expensive mouse operations
+        this.throttledHoverCheck = throttle(
+            this.checkElementHovers.bind(this),
+            this.HOVER_CHECK_THROTTLE
+        );
+
         // Bind event handlers to maintain correct "this" reference
         this.zoom = this.zoom.bind(this);
         this.startPan = this.startPan.bind(this);
@@ -70,6 +95,12 @@ export class CircuitRenderer {
         this.gridSpacing = 10;        // Default grid spacing
         this.gridColor = 'gray';        // Color for the grid lines
         this.gridLineWidth = 0.5;         // Line width for grid lines
+
+        // Listen for circuit changes to update spatial index
+        this.circuitService.on('elementAdded', () => this.invalidateSpatialIndex());
+        this.circuitService.on('elementDeleted', () => this.invalidateSpatialIndex());
+        this.circuitService.on('elementMoved', () => this.invalidateSpatialIndex());
+        this.circuitService.on('circuitCleared', () => this.invalidateSpatialIndex());
 
         // Attach Event Listeners
         this.initEventListeners();
@@ -101,9 +132,21 @@ export class CircuitRenderer {
     }
 
     /**
-     * Renders the entire circuit with applied zoom and pan transformations.
+     * Optimized render method with scheduling to prevent excessive re-renders
      */
     render() {
+        // Use render scheduler to batch multiple render requests
+        globalRenderScheduler.scheduleRender(() => {
+            this.performRender();
+        });
+    }
+
+    /**
+     * Actual render implementation - called by scheduler
+     */
+    performRender() {
+        globalPerformanceMonitor.startTiming('circuit-render');
+        
         this.clearCanvas();
 
         // Apply transformations (panning & zooming)
@@ -119,7 +162,7 @@ export class CircuitRenderer {
             if (!this.renderers.has(element.type)) {
                 const renderer = this.rendererFactory.create(element.type, this.context);
                 if (!renderer) {
-                    console.warn(`No renderer found for element type: ${element.type}`);
+                    Logger.warn(`No renderer found for element type: ${element.type}`);
                     return;
                 }
                 this.renderers.set(element.type, renderer);
@@ -147,6 +190,9 @@ export class CircuitRenderer {
         
         // Render bounding box for multiple selected elements (disabled for now)
         // this.renderSelectionBoundingBox();
+        
+        const renderDuration = globalPerformanceMonitor.endTiming('circuit-render');
+        Logger.debug(`Render completed in ${renderDuration.toFixed(2)}ms`);
     }
 
     /**
@@ -186,8 +232,7 @@ export class CircuitRenderer {
 
 
     /**
-     * Handles zooming in and out on the canvas.
-     * @param {WheelEvent} event - The mouse wheel event.
+     * Optimized zoom handler with batched rendering
      */
     zoom(event) {
         event.preventDefault();
@@ -212,13 +257,26 @@ export class CircuitRenderer {
         this.offsetY = mouseY - ((mouseY - this.offsetY) * zoomDirection);
         this.scale = newScale;
 
-        this.render(); // Redraw circuit with new zoom level
+        // Schedule render and emit pan event (but don't render twice)
+        this.render();
         
-        // Emit pan event for scroll bar synchronization
-        this.circuitService.emit("pan", {
-            offsetX: this.offsetX,
-            offsetY: this.offsetY
-        });
+        // Emit pan event for scroll bar synchronization (throttled)
+        this.emitPanEvent();
+    }
+
+    /**
+     * Throttled pan event emission to prevent event spam
+     */
+    emitPanEvent() {
+        if (!this.panEventThrottled) {
+            this.panEventThrottled = throttle(() => {
+                this.circuitService.emit("pan", {
+                    offsetX: this.offsetX,
+                    offsetY: this.offsetY
+                });
+            }, 50); // Limit pan events to 20fps
+        }
+        this.panEventThrottled();
     }
 
 
@@ -236,21 +294,19 @@ export class CircuitRenderer {
     }
 
     /**
-     * Handles panning when the mouse moves.
-     * @param {MouseEvent} event - The mouse event.
+     * Optimized panning with scheduled rendering
      */
     pan(event) {
         if (!this.isPanning) return;
 
         this.offsetX = event.clientX - this.startPan.x;
         this.offsetY = event.clientY - this.startPan.y;
+        
+        // Schedule render instead of immediate render
         this.render();
         
-        // Emit pan event for scroll bar synchronization
-        this.circuitService.emit("pan", {
-            offsetX: this.offsetX,
-            offsetY: this.offsetY
-        });
+        // Throttled pan event emission
+        this.emitPanEvent();
     }
 
     /**
@@ -261,7 +317,7 @@ export class CircuitRenderer {
     }
 
     /**
-     * Handles mouse movement for hover detection
+     * Optimized mouse movement handler with throttling
      */
     handleMouseMove(event) {
         if (this.isPanning) return; // Don't handle hover during panning
@@ -274,7 +330,8 @@ export class CircuitRenderer {
         const logicalX = (mouseX - this.offsetX) / this.scale;
         const logicalY = (mouseY - this.offsetY) / this.scale;
 
-        this.checkElementHovers(logicalX, logicalY);
+        // Use throttled hover check to prevent excessive re-renders
+        this.throttledHoverCheck(logicalX, logicalY);
     }
 
     /**
@@ -352,7 +409,7 @@ export class CircuitRenderer {
     }
 
     /**
-     * Check which elements should be hovered based on mouse position
+     * Optimized hover detection with spatial indexing and performance monitoring
      */
     checkElementHovers(mouseX, mouseY) {
         // Skip hover detection if there's an active command (like wire drawing)
@@ -365,13 +422,34 @@ export class CircuitRenderer {
             return;
         }
 
+        globalPerformanceMonitor.startTiming('hover-check');
+        
+        // Update spatial index if needed
+        this.updateSpatialIndex();
+        
         let newHoveredElement = null;
         
-        // Check all circuit elements for hover
-        const elements = this.circuitService.getElements();
-        if (elements) {
-            for (const element of elements) {
+        // Use spatial index for fast element lookup
+        const candidateElements = this.spatialIndex.findElementsAtPoint(mouseX, mouseY);
+        
+        if (candidateElements && candidateElements.length > 0) {
+            // Sort candidates by render order (reverse order so top elements are checked first)
+            const elements = this.circuitService.getElements();
+            const elementIndices = new Map();
+            elements.forEach((element, index) => {
+                elementIndices.set(element.id, index);
+            });
+            
+            candidateElements.sort((a, b) => {
+                const indexA = elementIndices.get(a.id) || 0;
+                const indexB = elementIndices.get(b.id) || 0;
+                return indexB - indexA; // Reverse order
+            });
+            
+            // Check candidates for precise hover detection
+            for (const element of candidateElements) {
                 const renderer = this.renderers.get(element.type);
+                
                 if (renderer) {
                     let isHovered = false;
                     
@@ -398,6 +476,43 @@ export class CircuitRenderer {
             this.hoveredElement = newHoveredElement;
             this.render();
         }
+        
+        const hoverDuration = globalPerformanceMonitor.endTiming('hover-check');
+        if (hoverDuration > 5) { // Log if hover check is slow
+            Logger.debug(`Slow hover check: ${hoverDuration.toFixed(2)}ms for ${elements?.length || 0} elements`);
+        }
+    }
+
+    /**
+     * Quick viewport check to skip elements that are clearly not visible
+     * @param {Object} element - Element to check
+     * @returns {boolean} True if element might be visible
+     */
+    isElementInViewport(element) {
+        if (!element.nodes || element.nodes.length === 0) return true;
+        
+        // Get element bounds
+        const xs = element.nodes.map(node => node.x);
+        const ys = element.nodes.map(node => node.y);
+        const minX = Math.min(...xs);
+        const maxX = Math.max(...xs);
+        const minY = Math.min(...ys);
+        const maxY = Math.max(...ys);
+        
+        // Transform viewport bounds to logical coordinates
+        const viewportLeft = -this.offsetX / this.scale;
+        const viewportTop = -this.offsetY / this.scale;
+        const viewportRight = (this.canvas.width - this.offsetX) / this.scale;
+        const viewportBottom = (this.canvas.height - this.offsetY) / this.scale;
+        
+        // Add some margin for element size
+        const margin = 50;
+        
+        // Check if element bounds intersect with viewport
+        return !(maxX + margin < viewportLeft ||
+                 minX - margin > viewportRight ||
+                 maxY + margin < viewportTop ||
+                 minY - margin > viewportBottom);
     }
 
     /**
@@ -411,8 +526,7 @@ export class CircuitRenderer {
     }
 
     /**
-     * Set the selected element
-     * @param {Object|null} element - The element to select, or null to clear selection
+     * Set the selected element with optimized rendering
      */
     setSelectedElement(element) {
         if (this.selectedElement !== element) {
@@ -422,30 +536,91 @@ export class CircuitRenderer {
     }
 
     /**
-     * Get the currently selected element
-     * @returns {Object|null} The selected element or null
-     */
-    getSelectedElement() {
-        return this.selectedElement;
-    }
-
-    /**
-     * Clear the current selection
+     * Clear the current selection with optimized rendering
      */
     clearSelection() {
-        this.setSelectedElement(null);
+        const hadSelection = this.selectedElement !== null || this.selectedElements.size > 0;
+        this.selectedElement = null;
         this.selectedElements.clear();
+        
+        // Only render if there was actually a selection to clear
+        if (hadSelection) {
+            this.render();
+        }
     }
 
     /**
-     * Add element to multiple selection
-     * @param {Object} element - The element to add to selection
+     * Add element to multiple selection with optimized rendering
      */
     addToSelection(element) {
-        if (element) {
+        if (element && !this.selectedElements.has(element)) {
             this.selectedElements.add(element);
             this.render();
         }
+    }
+
+    /**
+     * Update spatial index with current elements and viewport
+     */
+    updateSpatialIndex() {
+        const elements = this.circuitService.getElements();
+        
+        // Update viewport bounds for adaptive indexing
+        this.spatialIndex.updateViewport(
+            this.offsetX, this.offsetY, this.scale,
+            this.canvas.width, this.canvas.height
+        );
+        
+        // Rebuild index if needed or if marked for update
+        if (this.spatialIndexNeedsUpdate) {
+            this.spatialIndex.rebuild(elements);
+            this.spatialIndexNeedsUpdate = false;
+        }
+    }
+
+    /**
+     * Mark spatial index for update (call when elements change)
+     */
+    invalidateSpatialIndex() {
+        this.spatialIndexNeedsUpdate = true;
+    }
+
+    /**
+     * Add element to spatial index
+     */
+    addElementToSpatialIndex(element) {
+        this.spatialIndex.addElement(element);
+    }
+
+    /**
+     * Remove element from spatial index
+     */
+    removeElementFromSpatialIndex(element) {
+        this.spatialIndex.removeElement(element);
+    }
+
+    /**
+     * Cleanup method to remove event listeners and prevent memory leaks
+     */
+    dispose() {
+        // Remove all canvas event listeners
+        this.canvas.removeEventListener("wheel", this.zoom);
+        this.canvas.removeEventListener("mousedown", this.startPan);
+        this.canvas.removeEventListener("mousemove", this.handleMouseMove);
+        this.canvas.removeEventListener("mouseup", this.stopPan);
+        this.canvas.removeEventListener("mouseleave", this.clearAllHovers);
+        this.canvas.removeEventListener("dblclick", this.handleDoubleClick);
+        
+        // Clear any scheduled renders
+        globalRenderScheduler.cancelRender(this.performRender);
+        
+        // Clear references
+        this.renderers.clear();
+        this.selectedElements.clear();
+        this.hoveredElement = null;
+        this.selectedElement = null;
+        
+        Logger.debug('CircuitRenderer disposed');
     }
 
     /**

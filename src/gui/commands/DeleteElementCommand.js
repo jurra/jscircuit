@@ -1,4 +1,5 @@
 import { GUICommand } from "./GUICommand.js";
+import { Logger } from "../../utils/Logger.js";
 
 /**
  * DeleteElementCommand: Deletes selected elements from the circuit
@@ -23,11 +24,11 @@ export class DeleteElementCommand extends GUICommand {
     const selectedElements = this.circuitRenderer.getSelectedElements();
     
     if (!selectedElements || selectedElements.length === 0) {
-      console.log("[DeleteElementCommand] No elements selected for deletion");
+      Logger.debug("[DeleteElementCommand] No elements selected for deletion");
       return;
     }
     
-    console.log(`[DeleteElementCommand] Deleting ${selectedElements.length} selected element(s)`);
+    Logger.debug(`[DeleteElementCommand] Deleting ${selectedElements.length} selected element(s)`);
     
     // Store elements for undo (deep copy to preserve state)
     this.deletedElements = selectedElements.map(element => ({
@@ -43,7 +44,7 @@ export class DeleteElementCommand extends GUICommand {
     // Clear selection after deletion
     this.circuitRenderer.clearSelection();
     
-    console.log("[DeleteElementCommand] Elements deleted successfully");
+    Logger.debug("[DeleteElementCommand] Elements deleted successfully");
   }
 
   /**
@@ -51,18 +52,18 @@ export class DeleteElementCommand extends GUICommand {
    */
   undo() {
     if (!this.deletedElements || this.deletedElements.length === 0) {
-      console.log("[DeleteElementCommand] No elements to restore");
+      Logger.debug("[DeleteElementCommand] No elements to restore");
       return;
     }
     
-    console.log(`[DeleteElementCommand] Restoring ${this.deletedElements.length} deleted element(s)`);
+    Logger.debug(`[DeleteElementCommand] Restoring ${this.deletedElements.length} deleted element(s)`);
     
     // Restore each deleted element
     this.deletedElements.forEach(({ element }) => {
       this.circuitService.addElement(element);
     });
     
-    console.log("[DeleteElementCommand] Elements restored successfully");
+    Logger.debug("[DeleteElementCommand] Elements restored successfully");
   }
 
   /**

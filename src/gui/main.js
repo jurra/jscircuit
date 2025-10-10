@@ -8,6 +8,8 @@ import {
   setupCommands
 } from "../config/settings.js";
 import { initMenu } from "./menu/initMenu.js";
+import { Logger } from "../utils/Logger.js";
+import { globalPerformanceMonitor } from "../utils/PerformanceUtils.js";
 
 /* ---------- HiDPI helpers ---------- */
 function fitCanvasHiDPIOnce(canvas){
@@ -61,7 +63,35 @@ const guiAdapter = new GUIAdapter(
 await initMenu();
 
 /* ---------- Commands, first render, reveal, THEN start resize observer ---------- */
+Logger.info('QuCat Circuit Generator starting with performance optimizations...');
+globalPerformanceMonitor.startTiming('app-initialization');
+
 setupCommands(circuitService, guiAdapter.circuitRenderer);
 guiAdapter.initialize();                  // this will call first render
 stage.classList.add('ready');             // fade in only after crisp render
 setupHiDPICanvas(canvas, () => guiAdapter.circuitRenderer.render());
+
+const initTime = globalPerformanceMonitor.endTiming('app-initialization');
+Logger.info(`Application initialized in ${initTime.toFixed(2)}ms`);
+
+// Add performance monitoring for development
+if (Logger.isDev) {
+  // Monitor for slow operations
+  const originalRender = guiAdapter.circuitRenderer.render;
+  let renderCount = 0;
+  
+  guiAdapter.circuitRenderer.render = function() {
+    renderCount++;
+    const start = performance.now();
+    const result = originalRender.apply(this, arguments);
+    const duration = performance.now() - start;
+    
+    if (duration > 16) { // Slower than 60fps
+      Logger.warn(`Slow render #${renderCount}: ${duration.toFixed(2)}ms`);
+    }
+    
+    return result;
+  };
+  
+  Logger.info('Performance monitoring enabled. Set "setQuCatDebug(false)" to disable.');
+}

@@ -12,3 +12,13 @@ global.Image = class {
         this.height = 0;
     }
 };
+
+// Mock requestAnimationFrame for Node.js test environment
+global.requestAnimationFrame = (callback) => {
+    // Use setTimeout to simulate async behavior
+    return setTimeout(callback, 16); // ~60fps
+};
+
+global.cancelAnimationFrame = (id) => {
+    clearTimeout(id);
+};
