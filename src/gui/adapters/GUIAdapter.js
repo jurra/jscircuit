@@ -31,6 +31,7 @@ import { ACTIONS, KEYMAP } from "../../config/menu.bindings.js";
 import { PropertyPanel } from "../property_panel/PropertyPanel.js";
 import { Logger } from "../../utils/Logger.js";
 import { throttle } from "../../utils/PerformanceUtils.js";
+import { GRID_CONFIG } from "../../config/gridConfig.js";
 
 
 /**
@@ -434,9 +435,9 @@ export class GUIAdapter {
 
       // If placing an element, finalize its position on left click
       if (event.button === 0 && this.placingElement) {
-        const snappedX = Math.round(offsetX / 10) * 10;
-        const snappedY = Math.round(offsetY / 10) * 10;
-        const width = 60;
+        const snappedX = GRID_CONFIG.snapToGrid(offsetX);
+        const snappedY = GRID_CONFIG.snapToGrid(offsetY);
+        const width = GRID_CONFIG.componentSpanPixels; // Use grid-based component width
 
         // Get current orientation from element properties (preserve rotation)
         const currentOrientation = this.placingElement.properties?.values?.orientation || 0;
@@ -525,9 +526,9 @@ export class GUIAdapter {
 
       // Live update for placing element
       if (this.placingElement) {
-        const snappedX = Math.round(offsetX / 10) * 10;
-        const snappedY = Math.round(offsetY / 10) * 10;
-        const width = 60;
+        const snappedX = GRID_CONFIG.snapToGrid(offsetX);
+        const snappedY = GRID_CONFIG.snapToGrid(offsetY);
+        const width = GRID_CONFIG.componentSpanPixels; // Use grid-based component width
 
         // Get current orientation from element properties (preserve rotation)
         const currentOrientation = this.placingElement.properties?.values?.orientation || 0;
@@ -624,9 +625,9 @@ export class GUIAdapter {
       
       // Immediately position the element at the current mouse position
       // This prevents the element from staying at default coordinates until mouse movement
-      const snappedX = Math.round(this.currentMousePos.x / 10) * 10;
-      const snappedY = Math.round(this.currentMousePos.y / 10) * 10;
-      const width = 60;
+      const snappedX = GRID_CONFIG.snapToGrid(this.currentMousePos.x);
+      const snappedY = GRID_CONFIG.snapToGrid(this.currentMousePos.y);
+      const width = GRID_CONFIG.componentSpanPixels; // Use grid-based component width
 
       // Get current orientation from element properties (preserve rotation)
       const currentOrientation = element.properties?.values?.orientation || 0;
@@ -976,7 +977,7 @@ export class GUIAdapter {
     const centerY = (this.placingElement.nodes[0].y + this.placingElement.nodes[1].y) / 2;
     
     // For most components, rotation changes the node positions
-    const width = 60; // Standard component width
+    const width = GRID_CONFIG.componentSpanPixels; // Use grid-based component width
     const angleRad = (angle * Math.PI) / 180;
     const currentAngleRad = Math.atan2(
       this.placingElement.nodes[1].y - this.placingElement.nodes[0].y,

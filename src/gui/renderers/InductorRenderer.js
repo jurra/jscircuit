@@ -1,8 +1,13 @@
 import { ImageRenderer } from "./ImageRenderer.js";
+import { GRID_CONFIG } from "../../config/gridConfig.js";
 
 export class InductorRenderer extends ImageRenderer {
     constructor(context) {
-        super(context, "inductor", 60, 25);
+        // Use grid config for component dimensions
+        // Width: 5 grid points = 50 pixels, Height: 2.5 grid points = 25 pixels
+        const width = GRID_CONFIG.componentSpanPixels; // 50 pixels (5 grid points)
+        const height = GRID_CONFIG.spacing * 2.5; // 25 pixels (2.5 grid points)
+        super(context, "inductor", width, height);
     }
 
     renderElement(inductor) {
