@@ -39,8 +39,8 @@ export class InductorRenderer extends ImageRenderer {
         // Restore rotation
         this.context.restore();
 
-        // Draw connections
-        this.renderConnections(start, end, midX, midY);
+        // Draw connections with constrained length to fit within 5 grid points
+        this.renderConstrainedConnections(start, end, midX, midY);
 
         // Render properties (label and/or value) using the new system
         this.renderProperties(inductor, midX, midY, angle);
@@ -64,37 +64,47 @@ export class InductorRenderer extends ImageRenderer {
         this.context.restore();
     }
 
-    renderConnections(start, end, midX, midY) {
+    renderConstrainedConnections(start, end, midX, midY) {
         this.context.save();
         this.context.strokeStyle = '#000000';
         this.context.lineWidth = 1;
 
-        // Calculate the angle and connection points based on the actual node positions
+        // Calculate the angle and constrain connection length to fit within component bounds
         const angle = Math.atan2(end.y - start.y, end.x - start.x);
-        const halfWidth = 30; // Connection distance from center
+        
+        // Use half the component width minus a small margin to stay within bounds
+        const maxConnectionLength = (this.SCALED_WIDTH / 2) - 5; // 5 pixel margin
         
         // Calculate connection points on the inductor body edges
         const connectionStart = {
-            x: midX - Math.cos(angle) * halfWidth,
-            y: midY - Math.sin(angle) * halfWidth
+            x: midX - Math.cos(angle) * maxConnectionLength,
+            y: midY - Math.sin(angle) * maxConnectionLength
         };
         
         const connectionEnd = {
-            x: midX + Math.cos(angle) * halfWidth,
-            y: midY + Math.sin(angle) * halfWidth
+            x: midX + Math.cos(angle) * maxConnectionLength,
+            y: midY + Math.sin(angle) * maxConnectionLength
         };
 
-        // Draw line from start node to inductor body
-        this.context.beginPath();
-        this.context.moveTo(start.x, start.y);
-        this.context.lineTo(connectionStart.x, connectionStart.y);
-        this.context.stroke();
+        // Only draw connection lines if the nodes are far enough from the center
+        const startDistance = Math.sqrt((start.x - midX) ** 2 + (start.y - midY) ** 2);
+        const endDistance = Math.sqrt((end.x - midX) ** 2 + (end.y - midY) ** 2);
 
-        // Draw line from inductor body to end node
-        this.context.beginPath();
-        this.context.moveTo(connectionEnd.x, connectionEnd.y);
-        this.context.lineTo(end.x, end.y);
-        this.context.stroke();
+        // Draw line from start node to inductor body only if needed
+        if (startDistance > maxConnectionLength) {
+            this.context.beginPath();
+            this.context.moveTo(start.x, start.y);
+            this.context.lineTo(connectionStart.x, connectionStart.y);
+            this.context.stroke();
+        }
+
+        // Draw line from inductor body to end node only if needed
+        if (endDistance > maxConnectionLength) {
+            this.context.beginPath();
+            this.context.moveTo(connectionEnd.x, connectionEnd.y);
+            this.context.lineTo(end.x, end.y);
+            this.context.stroke();
+        }
 
         this.context.restore();
     }

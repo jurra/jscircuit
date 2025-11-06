@@ -22,7 +22,7 @@ export class ImageRenderer extends ElementRenderer {
         this.SCALED_HEIGHT = scaledHeight;
         
         // Selection styling
-        this.SELECTION_BORDER_WIDTH = 3;
+        this.SELECTION_BORDER_WIDTH = 1.5;
         this.SELECTION_BORDER_COLOR = '#007ACC'; // VS Code blue
         this.SELECTION_PADDING = 4; // Space between image and border
     }
