@@ -68,8 +68,15 @@ globalPerformanceMonitor.startTiming('app-initialization');
 
 setupCommands(circuitService, guiAdapter.circuitRenderer);
 guiAdapter.initialize();                  // this will call first render
+setupHiDPICanvas(canvas, () => {
+    guiAdapter.circuitRenderer.reCenter(); // Re-center after canvas resize
+    guiAdapter.circuitRenderer.centerScrollPosition(); // Center scroll position after resize
+    guiAdapter.circuitRenderer.render();
+});
+// Center the coordinates and scroll position after the HiDPI canvas is set up
+guiAdapter.circuitRenderer.reCenter();
+guiAdapter.circuitRenderer.centerScrollPosition();
 stage.classList.add('ready');             // fade in only after crisp render
-setupHiDPICanvas(canvas, () => guiAdapter.circuitRenderer.render());
 
 const initTime = globalPerformanceMonitor.endTiming('app-initialization');
 Logger.info(`Application initialized in ${initTime.toFixed(2)}ms`);

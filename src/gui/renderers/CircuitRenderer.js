@@ -808,4 +808,49 @@ export class CircuitRenderer {
         
         ctx.restore();
     }
+
+    /**
+     * Centers the logical coordinate system (0,0) in the middle of the canvas.
+     * This provides an intuitive coordinate origin for circuit design.
+     */
+    reCenter() {
+        // Get the CSS dimensions of the canvas (not the HiDPI pixel dimensions)
+        const rect = this.canvas.getBoundingClientRect();
+        const canvasCenterX = rect.width / 2;
+        const canvasCenterY = rect.height / 2;
+        
+        // Set offset so that logical coordinate (0,0) appears at canvas center
+        // Since the context transform is translate(offsetX, offsetY) then scale(scale, scale),
+        // logical (0,0) will be drawn at screen position (offsetX, offsetY)
+        this.offsetX = canvasCenterX;
+        this.offsetY = canvasCenterY;
+        
+        // Trigger re-render to apply the new centering
+        this.render();
+        
+        Logger.info(`View recentered - logical coordinate (0,0) is now at canvas center (${canvasCenterX}, ${canvasCenterY})`);
+    }
+
+    /**
+     * Centers the scroll position of the canvas container to align with logical center
+     */
+    centerScrollPosition() {
+        const canvasContainer = this.canvas.parentElement;
+        if (!canvasContainer) {
+            console.warn('[CircuitRenderer] No canvas container found for scroll centering');
+            return;
+        }
+
+        const containerRect = canvasContainer.getBoundingClientRect();
+        
+        // Calculate center scroll position based on canvas and container dimensions
+        const scrollLeft = (this.canvas.clientWidth - containerRect.width) / 2;
+        const scrollTop = (this.canvas.clientHeight - containerRect.height) / 2;
+        
+        // Set scroll position to center
+        canvasContainer.scrollLeft = Math.max(0, scrollLeft);
+        canvasContainer.scrollTop = Math.max(0, scrollTop);
+        
+        Logger.info(`Scroll position centered: left=${canvasContainer.scrollLeft}, top=${canvasContainer.scrollTop}`);
+    }
 }

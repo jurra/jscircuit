@@ -105,8 +105,6 @@ export class GUIAdapter {
    * - Mouse on canvas → draw/drag/wire logic
    */
   initialize() {
-    this.circuitRenderer.render();
-
     // Declarative inputs
     this.bindMenu();
     this.bindShortcuts(KEYMAP);
