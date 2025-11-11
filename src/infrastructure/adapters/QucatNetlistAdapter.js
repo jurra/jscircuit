@@ -117,6 +117,10 @@ export class QucatNetlistAdapter {
      * @returns {Element[]} Instantiated domain elements.
      */
     static _deserializeElements(lines) {
+        // First, detect format by analyzing component spans
+        const detectedFormat = this._detectFormatByComponentSpans(lines);
+        console.log(`� QuCat Format Detection: ${detectedFormat.version} with ${detectedFormat.confidence}% confidence - ${detectedFormat.reasoning}`);
+        
         const elements = [];
     
         for (const line of lines) {
@@ -131,12 +135,27 @@ export class QucatNetlistAdapter {
             const [logicalX1, logicalY1] = pos1.split(',').map(Number);
             const [logicalX2, logicalY2] = pos2.split(',').map(Number);
             
-            // Convert logical coordinates to pixel coordinates for internal use
-            const logicalPos1 = new GridCoordinate(logicalX1, logicalY1);
-            const logicalPos2 = new GridCoordinate(logicalX2, logicalY2);
+            let pixelPos1, pixelPos2;
             
-            const pixelPos1 = CoordinateAdapter.gridToPixel(logicalPos1);
-            const pixelPos2 = CoordinateAdapter.gridToPixel(logicalPos2);
+            if (detectedFormat.version === 'v1.0') {
+                // v1.0 coordinates need to be scaled to v2.0 then converted to pixels
+                const v1Pos1 = new GridCoordinate(logicalX1, logicalY1);
+                const v1Pos2 = new GridCoordinate(logicalX2, logicalY2);
+
+                const v2Pos1 = CoordinateAdapter.v1ToV2Grid(v1Pos1);
+                const v2Pos2 = CoordinateAdapter.v1ToV2Grid(v1Pos2);
+
+                pixelPos1 = CoordinateAdapter.gridToPixel(v2Pos1);
+                pixelPos2 = CoordinateAdapter.gridToPixel(v2Pos2);
+
+            } else {
+                // v2.0 coordinates can be directly converted to pixels
+                const logicalPos1 = new GridCoordinate(logicalX1, logicalY1);
+                const logicalPos2 = new GridCoordinate(logicalX2, logicalY2);
+
+                pixelPos1 = CoordinateAdapter.gridToPixel(logicalPos1);
+                pixelPos2 = CoordinateAdapter.gridToPixel(logicalPos2);
+            }
             
             const nodes = [pixelPos1, pixelPos2];
     
@@ -160,5 +179,95 @@ export class QucatNetlistAdapter {
         }
     
         return elements;
+    }
+
+    /**
+     * Analyzes component spans in netlist to detect QuCat format version.
+     * v1.0: Components span 1 interval (R;0,0;1,0 = 1 unit span)
+     * v2.0: Components span 5 intervals (R;0,0;5,0 = 5 unit span)
+     *
+     * @param {string[]} lines - Netlist lines
+     * @returns {Object} Detection result with version, confidence, and reasoning
+     */
+    static _detectFormatByComponentSpans(lines) {
+        const componentTypes = ['R', 'C', 'L']; // Resistor, Capacitor, Inductor have defined spans
+        const spans = [];
+        let componentCount = 0;
+
+        for (const line of lines) {
+            const [shortType, pos1, pos2] = line.trim().split(';');
+
+            if (!componentTypes.includes(shortType)) continue; // Skip wires, junctions, grounds
+
+            const [x1, y1] = pos1.split(',').map(Number);
+            const [x2, y2] = pos2.split(',').map(Number);
+
+            // Calculate span (Manhattan distance)
+            const span = Math.abs(x2 - x1) + Math.abs(y2 - y1);
+            spans.push(span);
+            componentCount++;
+        }
+
+        if (componentCount === 0) {
+            console.warn('No primitive components found in QuCat file. Falling back to v2.0 (latest)');
+            return {
+                version: 'v2.0',
+                confidence: 50,
+                componentCount: 0,
+                reasoning: 'No components found - fallback to latest version'
+            };
+        }
+
+        // Analyze spans to determine format
+        const uniqueSpans = [...new Set(spans)];
+        const spanCounts = {};
+        spans.forEach(span => spanCounts[span] = (spanCounts[span] || 0) + 1);
+
+        const dominantSpan = Object.keys(spanCounts).reduce((a, b) =>
+            spanCounts[a] > spanCounts[b] ? a : b
+        );
+        const dominantCount = spanCounts[dominantSpan];
+        const confidence = Math.round((dominantCount / spans.length) * 100);
+
+        let version, reasoning;
+
+        // Check for mixed spans first
+        const hasUnitSpans = spans.includes(1);
+        const hasFiveSpans = spans.includes(5);
+        const hasOnlyStandardSpans = uniqueSpans.every(span => span === 1 || span === 5);
+        const hasBothStandardSpans = hasUnitSpans && hasFiveSpans;
+
+        if (hasBothStandardSpans) {
+            // Has both v1.0 and v2.0 components - prefer v2.0
+            version = 'v2.0';
+            reasoning = `Mixed spans but contains v2.0-style 5-interval components`;
+        } else if (dominantSpan == 1 && hasOnlyStandardSpans) {
+            version = 'v1.0';
+            reasoning = `${dominantCount}/${componentCount} components span 1 interval`;
+        } else if (dominantSpan == 5 && hasOnlyStandardSpans) {
+            version = 'v2.0';
+            reasoning = `${dominantCount}/${componentCount} components span 5 intervals`;
+        } else if (hasUnitSpans && !hasFiveSpans) {
+            // Has v1.0 components but no v2.0 components (may have other spans)
+            version = 'v1.0';
+            reasoning = `Mixed spans but contains v1.0-style 1-interval components`;
+        } else if (hasFiveSpans && !hasUnitSpans) {
+            // Has v2.0 components but no v1.0 components (may have other spans)
+            version = 'v2.0';
+            reasoning = `Mixed spans but contains v2.0-style 5-interval components`;
+        } else {
+            // Other unusual spans only - fallback
+            version = 'v2.0';
+            reasoning = `Ambiguous spans (dominant: ${dominantSpan}) - fallback to latest`;
+        }
+
+        return {
+            version,
+            confidence,
+            componentCount,
+            reasoning,
+            spans: uniqueSpans,
+            dominantSpan: parseInt(dominantSpan)
+        };
     }
 }
