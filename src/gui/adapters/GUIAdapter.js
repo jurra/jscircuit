@@ -338,6 +338,12 @@ export class GUIAdapter {
           console.warn("[GUIAdapter] Missing command:", spec.name, args);
           return;
         }
+        
+        // Special handling for addElement: pass current mouse position for grid alignment
+        if (spec.name === "addElement" && cmd.setMousePosition && this.currentMousePos) {
+          cmd.setMousePosition(this.currentMousePos);
+        }
+        
         this.commandHistory.executeCommand(cmd, this.circuitService);
         break;
       }

@@ -3,6 +3,8 @@ import { Position } from '../../domain/valueObjects/Position.js';
 import { Properties } from '../../domain/valueObjects/Properties.js';
 import { Label } from '../../domain/valueObjects/Label.js';
 import { ElementFactory } from '../../domain/factories/ElementFactory.js';
+import { CoordinateAdapter } from './CoordinateAdapter.js';
+import { GridCoordinate } from '../../domain/valueObjects/GridCoordinate.js';
 
 /**
  * Type mapping between short code (used in .qucat format)
@@ -60,6 +62,7 @@ export class QucatNetlistAdapter {
 
     /**
      * Internal: Serialize elements into .qucat netlist lines.
+     * Converts pixel coordinates to logical coordinates for compact file format.
      * 
      * @param {Array<Object>} elements - Serialized element objects.
      * @returns {string} Netlist string content.
@@ -72,8 +75,15 @@ export class QucatNetlistAdapter {
             const shortType = elementTypeToShortCode[type];
             if (!shortType) throw new Error(`Unknown element type: ${type}`);
 
-            const node1 = `${nodes[0].x},${nodes[0].y}`;
-            const node2 = `${nodes[1].x},${nodes[1].y}`;
+            // Convert pixel coordinates to logical coordinates
+            const pixelPos1 = new Position(nodes[0].x, nodes[0].y);
+            const pixelPos2 = new Position(nodes[1].x, nodes[1].y);
+            
+            const logical1 = CoordinateAdapter.pixelToGrid(pixelPos1);
+            const logical2 = CoordinateAdapter.pixelToGrid(pixelPos2);
+
+            const node1 = `${logical1.x},${logical1.y}`;
+            const node2 = `${logical2.x},${logical2.y}`;
 
             // Get the main property for this element type
             const mapEntry = typeMap[shortType];
@@ -101,6 +111,7 @@ export class QucatNetlistAdapter {
 
     /**
      * Internal: Deserialize netlist lines into Element instances.
+     * Converts logical coordinates from file back to pixel coordinates for internal use.
      * 
      * @param {string[]} lines - Each line follows the .qucat format.
      * @returns {Element[]} Instantiated domain elements.
@@ -116,9 +127,18 @@ export class QucatNetlistAdapter {
     
             const { fullType, propertyKey } = mapEntry;
     
-            const [x1, y1] = pos1.split(',').map(Number);
-            const [x2, y2] = pos2.split(',').map(Number);
-            const nodes = [new Position(x1, y1), new Position(x2, y2)];
+            // Parse logical coordinates from file
+            const [logicalX1, logicalY1] = pos1.split(',').map(Number);
+            const [logicalX2, logicalY2] = pos2.split(',').map(Number);
+            
+            // Convert logical coordinates to pixel coordinates for internal use
+            const logicalPos1 = new GridCoordinate(logicalX1, logicalY1);
+            const logicalPos2 = new GridCoordinate(logicalX2, logicalY2);
+            
+            const pixelPos1 = CoordinateAdapter.gridToPixel(logicalPos1);
+            const pixelPos2 = CoordinateAdapter.gridToPixel(logicalPos2);
+            
+            const nodes = [pixelPos1, pixelPos2];
     
             // Parse the main property value
             const raw = valueStr?.trim();

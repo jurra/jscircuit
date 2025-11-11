@@ -3,6 +3,7 @@ import { Position } from "../../domain/valueObjects/Position.js";
 import { ElementFactory } from "../../domain/factories/ElementFactory.js";
 import { Properties } from "../../domain/valueObjects/Properties.js";
 import { GRID_CONFIG } from "../../config/gridConfig.js";
+import { CoordinateAdapter } from "../../infrastructure/adapters/CoordinateAdapter.js";
 
 /**
  * Command to add an element to the circuit with proper grid-based sizing
@@ -22,9 +23,11 @@ export class AddElementCommand extends GUICommand {
     this.elementRegistry = elementRegistry;
     this.elementType = elementType;
 
-    // Defaults for positioning (in logical coordinates)
-    this.DEFAULT_X = 400;
-    this.DEFAULT_Y = 300;
+    // Defaults for positioning - ensure they're grid-aligned
+    const defaultPos = new Position(400, 300);
+    const snappedDefaults = CoordinateAdapter.snapToGrid(defaultPos);
+    this.DEFAULT_X = snappedDefaults.x;
+    this.DEFAULT_Y = snappedDefaults.y;
     
     // Store current mouse position for placement mode
     this.currentMousePosition = null;
@@ -41,22 +44,30 @@ export class AddElementCommand extends GUICommand {
   /**
    * Executes the command, creating an element with proper grid-based sizing.
    * For 2-node components, creates nodes that span exactly 5 grid spaces (50 pixels).
+   * Mouse position is snapped to logical grid for proper alignment.
    */
   execute() {
     // Determine center position for the component
     let centerX, centerY;
     
     if (this.currentMousePosition) {
-      centerX = this.currentMousePosition.x;
-      centerY = this.currentMousePosition.y;
+      // Snap mouse position to logical grid first
+      const snappedPixelPos = CoordinateAdapter.snapToGrid(this.currentMousePosition);
+      centerX = snappedPixelPos.x;
+      centerY = snappedPixelPos.y;
+      console.log('[AddElementCommand] Using mouse position:', this.currentMousePosition, '→ snapped:', { x: centerX, y: centerY });
     } else {
+      // Use grid-aligned default position
       centerX = this.DEFAULT_X;
       centerY = this.DEFAULT_Y;
+      console.log('[AddElementCommand] Using default position:', { x: centerX, y: centerY });
     }
 
     // Calculate node positions using grid configuration
     // This ensures 2-node components span exactly 5 grid spaces (50 pixels)
     const nodePositions = GRID_CONFIG.calculateNodePositions(centerX, centerY, 0); // 0 degrees initially
+    
+    console.log('[AddElementCommand] Node positions calculated:', nodePositions);
     
     const positions = [
       new Position(nodePositions.start.x, nodePositions.start.y),
@@ -68,6 +79,8 @@ export class AddElementCommand extends GUICommand {
     
     // Use ElementFactory.create with correct parameter order
     const element = ElementFactory.create(this.elementType, undefined, positions, properties, null);
+
+    console.log('[AddElementCommand] Created element with nodes:', element.nodes.map(n => ({ x: n.x, y: n.y })));
 
     // Add the element in "placement mode" (so it follows the mouse)
     this.circuitService.addElement(element);

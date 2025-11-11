@@ -1,18 +1,15 @@
 /**
- * Grid Configuration for Component Sizing
+ * Grid Configuration for Circuit Generator
  * 
- * Simplified Approach - Using Grid Points Only:
- * - Grid composed of points spaced 10 pixels apart
- * - Components span 5 grid points (50 pixels)
- * - Node-to-node distance: 5 grid points
+ * Uses logical coordinate system with CoordinateAdapter for v1.0/v2.0 compatibility
  */
 
-// Base grid measurements
-export const GRID_SPACING = 10; // 10 pixels between each grid point
+import { CoordinateAdapter } from '../infrastructure/adapters/CoordinateAdapter.js';
 
-// Component sizing - simplified to use only grid points
-export const COMPONENT_GRID_POINTS = 5; // Components span 5 grid points
-export const COMPONENT_SPAN_PIXELS = COMPONENT_GRID_POINTS * GRID_SPACING; // 50 pixels
+// Use CoordinateAdapter as the single source of truth
+export const GRID_SPACING = CoordinateAdapter.CONFIG.PIXELS_PER_GRID_UNIT; // 10 pixels between logical grid units
+export const COMPONENT_GRID_POINTS = CoordinateAdapter.CONFIG.V2_COMPONENT_SPAN; // Components span 6 logical grid points
+export const COMPONENT_SPAN_PIXELS = COMPONENT_GRID_POINTS * GRID_SPACING; // 60 pixels
 
 /**
  * Central grid configuration object for component sizing
@@ -20,36 +17,42 @@ export const COMPONENT_SPAN_PIXELS = COMPONENT_GRID_POINTS * GRID_SPACING; // 50
 export const GRID_CONFIG = {
     // Basic measurements
     spacing: GRID_SPACING,                    // 10 pixels between points
-    componentGridPoints: COMPONENT_GRID_POINTS, // 5 grid points span
-    componentSpanPixels: COMPONENT_SPAN_PIXELS, // 50 pixels total
+    componentGridPoints: COMPONENT_GRID_POINTS, // 6 grid points span
+    componentSpanPixels: COMPONENT_SPAN_PIXELS, // 60 pixels total
     
     // Component height (2 grid points for visual appeal)
     componentHeightPixels: 2 * GRID_SPACING,   // 20 pixels
     
+    // Legacy compatibility
+    legacyComponentGridPoints: 5,               // Old system (migration)
+    v1ComponentSpan: CoordinateAdapter.CONFIG.V1_COMPONENT_SPAN, // v1.0: 2 grid points
+    
     // Grid snapping utility function
     snapToGrid: (value) => Math.round(value / GRID_SPACING) * GRID_SPACING,
     
-    // Calculate node positions for 2-node components
-    // For nodes to be on grid points AND span 5 grid spaces:
-    // - If component spans 5 grid spaces (50 pixels), nodes must be 5 spaces apart
-    // - For horizontal orientation: if one node is at grid point X, other is at X + 50
-    // - The center will be at X + 25 (which is NOT on a grid point)
-    // - So we need to calculate from the intended center to find proper node positions
+    
+    // Calculate node positions for 2-node components using logical coordinates
+    // For v2.0: components span 6 logical grid units (60 pixels)
     calculateNodePositions: (centerX, centerY, angleRadians = 0) => {
         if (angleRadians === 0) {
-            // Horizontal orientation: calculate start node on grid, end node 5 spaces away
-            const halfSpan = COMPONENT_SPAN_PIXELS / 2; // 25 pixels
-            const startX = Math.round((centerX - halfSpan) / GRID_SPACING) * GRID_SPACING;
-            const endX = startX + COMPONENT_SPAN_PIXELS; // Exactly 5 grid spaces away
-            const snapY = Math.round(centerY / GRID_SPACING) * GRID_SPACING;
+            // Horizontal orientation: calculate using logical coordinates
+            const halfSpanLogical = COMPONENT_GRID_POINTS / 2; // 3 logical grid units
+            const centerLogicalX = Math.round(centerX / GRID_SPACING);
+            const centerLogicalY = Math.round(centerY / GRID_SPACING);
             
             return {
-                start: { x: startX, y: snapY },
-                end: { x: endX, y: snapY }
+                start: {
+                    x: (centerLogicalX - halfSpanLogical) * GRID_SPACING,
+                    y: centerLogicalY * GRID_SPACING
+                },
+                end: {
+                    x: (centerLogicalX + halfSpanLogical) * GRID_SPACING,
+                    y: centerLogicalY * GRID_SPACING
+                }
             };
         } else {
-            // For other orientations, use trigonometry but ensure nodes land on grid points
-            const halfSpanPixels = COMPONENT_SPAN_PIXELS / 2; // 25 pixels
+            // For other orientations, use trigonometry but snap to grid
+            const halfSpanPixels = COMPONENT_SPAN_PIXELS / 2; // 30 pixels
             
             const startX = centerX - halfSpanPixels * Math.cos(angleRadians);
             const startY = centerY - halfSpanPixels * Math.sin(angleRadians);
