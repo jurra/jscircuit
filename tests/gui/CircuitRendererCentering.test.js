@@ -19,6 +19,14 @@ describe('CircuitRenderer Coordinate Centering', () => {
             width: 800,
             height: 600,
             addEventListener: () => {}, // Mock addEventListener
+            getBoundingClientRect: () => ({
+                width: 800,
+                height: 600,
+                left: 0,
+                top: 0,
+                right: 800,
+                bottom: 600
+            }),
             getContext: () => ({
                 clearRect: () => {},
                 save: () => {},
@@ -57,14 +65,24 @@ describe('CircuitRenderer Coordinate Centering', () => {
             circuitRenderer.reCenter();
 
             // After centering - offsets should position (0,0) at canvas center
-            expect(circuitRenderer.offsetX).to.equal(canvas.width / 2); // 400
-            expect(circuitRenderer.offsetY).to.equal(canvas.height / 2); // 300
+            // Using getBoundingClientRect() values (800x600)
+            expect(circuitRenderer.offsetX).to.equal(400); // 800 / 2
+            expect(circuitRenderer.offsetY).to.equal(300); // 600 / 2
         });
 
         it('should work with different canvas sizes', () => {
             // Test with a different canvas size
             canvas.width = 1200;
             canvas.height = 900;
+            // Update getBoundingClientRect mock to match new dimensions
+            canvas.getBoundingClientRect = () => ({
+                width: 1200,
+                height: 900,
+                left: 0,
+                top: 0,
+                right: 1200,
+                bottom: 900
+            });
 
             circuitRenderer.reCenter();
 

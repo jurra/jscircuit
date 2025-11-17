@@ -119,6 +119,9 @@ export class GUIAdapter {
 
     // Re-render on domain state changes
     this.circuitService.on("update", () => this.circuitRenderer.render());
+
+    // Perform initial render
+    this.circuitRenderer.render();
   }
 
   /**

@@ -4,6 +4,14 @@ export function createMockCanvas() {
     return {
         width: 800,
         height: 600,
+        getBoundingClientRect: sinon.stub().returns({
+            width: 800,
+            height: 600,
+            left: 0,
+            top: 0,
+            right: 800,
+            bottom: 600
+        }),
         getContext: sinon.stub().returns({
             clearRect: sinon.spy(),
             beginPath: sinon.spy(),
