@@ -24,6 +24,7 @@ import { DrawWireCommand } from "../gui/commands/DrawWireCommand.js";
 import { DragElementCommand } from "../gui/commands/GUIDragElementCommand.js";
 import { SelectElementCommand } from "../gui/commands/SelectElementCommand.js";
 import { MultiSelectElementCommand } from "../gui/commands/MultiSelectElementCommand.js";
+import { SelectAllElementsCommand } from "../gui/commands/SelectAllElementsCommand.js";
 import { DeleteElementCommand } from "../gui/commands/DeleteElementCommand.js";
 import { DeleteAllCommand } from "../gui/commands/DeleteAllCommand.js";
 import { UpdateElementPropertiesCommand } from "../gui/commands/UpdateElementPropertiesCommand.js";
@@ -140,10 +141,7 @@ export function setupCommands(circuitService, circuitRenderer) {
 
     // Add missing commands that are referenced in the menu config
     if (!GUICommandRegistry.getTypes().includes("selectAll")) {
-        GUICommandRegistry.register("selectAll", () => ({
-            execute: () => console.log("Select All not implemented yet"),
-            undo: () => console.log("Select All undo not implemented yet")
-        }));
+        GUICommandRegistry.register("selectAll", () => new SelectAllElementsCommand(circuitService, circuitRenderer));
     }
 
     if (!GUICommandRegistry.getTypes().includes("deleteSelection")) {
