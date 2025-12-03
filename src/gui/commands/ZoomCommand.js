@@ -1,4 +1,5 @@
 import { GUICommand } from "./GUICommand.js";
+import { Logger } from "../../utils/Logger.js";
 
 export class ZoomCommand extends GUICommand {
     constructor(renderer, zoomFactor) {
@@ -8,7 +9,7 @@ export class ZoomCommand extends GUICommand {
     }
 
     execute() {
-        console.log(`🔍 Zooming by factor: ${this.zoomFactor}`);
+        Logger.debug(`🔍 Zooming by factor: ${this.zoomFactor}`);
         this.renderer.scale *= this.zoomFactor;
         this.renderer.render();
     }

@@ -33,11 +33,4 @@ export class GUICommandFactory {
     get(name) {
         return this.commands.get(name);
     }
-
-    /**
-     * Binds all registered commands to UI elements.
-     */
-    bindAll() {
-        this.commands.forEach((command) => command.bind());
-    }
 }

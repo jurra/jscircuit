@@ -5,6 +5,8 @@ import { generateId } from "../utils/idGenerator.js";
 import { ElementRegistry } from "../config/settings.js";
 import { Position } from "../domain/valueObjects/Position.js";
 import { Properties } from "../domain/valueObjects/Properties.js";
+import { Label } from "../domain/valueObjects/Label.js";
+import { Logger } from "../utils/Logger.js";
 
 /**
  * CircuitService orchestrates operations on the Circuit aggregate,
@@ -63,7 +65,7 @@ export class CircuitService extends EventEmitter {
 
           this.addElement(newElement);
         } catch (error) {
-          console.error(`Error creating element: ${error.message}`);
+          Logger.error(`Error creating element: ${error.message}`);
         }
       }
     });
@@ -194,6 +196,56 @@ export class CircuitService extends EventEmitter {
   }
 
   /**
+   * Gets a specific element by its ID.
+   *
+   * @param {string} elementId - The ID of the element to find.
+   * @returns {Element|null} The element with the given ID, or null if not found.
+   */
+  getElementByID(elementId) {
+    return this.circuit.elements.find(el => el.id === elementId) || null;
+  }
+
+  /**
+   * Updates properties and label of an existing element through the service.
+   * This maintains proper aggregate boundary and ensures state consistency.
+   *
+   * @param {string} elementId - The ID of the element to update.
+   * @param {Object} newProperties - Object containing new property values and label.
+   * @returns {boolean} True if element was found and updated, false otherwise.
+   */
+    updateElementProperties(elementId, newProperties) {
+        try {
+            const element = this.getElementByID(elementId);
+            if (!element) {
+                console.error(`Element with ID ${elementId} not found`);
+                return false;
+            }
+
+            // Update the label if provided
+            if (newProperties.label !== undefined) {
+                if (newProperties.label === null || newProperties.label === '') {
+                    element.label = null;
+                } else {
+                    element.label = new Label(newProperties.label);
+                }
+            }
+
+            // Update other properties
+            Object.keys(newProperties).forEach(key => {
+                if (key !== 'label') {
+                    element.getProperties().updateProperty(key, newProperties[key]);
+                }
+            });
+
+            // Emit update to trigger canvas re-render
+            this.emit("update", { type: "updateElementProperties", elementId, newProperties });
+
+            return true;
+        } catch (error) {
+            console.error('Error updating element properties:', error);
+            return false;
+        }
+    }  /**
    * Serializes the entire state of the circuit for undo/redo or persistence.
    *
    * @returns {string} A JSON string representing the circuit state.
@@ -203,6 +255,7 @@ export class CircuitService extends EventEmitter {
       elements: this.circuit.elements.map((el) => ({
         id: el.id,
         type: el.type,
+        label: el.label ? el.label.value : null, //  Export label value, not Label object
         nodes: el.nodes.map((pos) => ({ x: pos.x, y: pos.y })),
         properties: { ...el.properties.values }, //  flatten properties
       }))
@@ -244,11 +297,169 @@ export class CircuitService extends EventEmitter {
 
       const properties = new Properties(cleanProps);
 
-      const el = factory(elData.id, nodes, elData.label ?? null, properties);
+      // Create Label object from label string if present
+      const labelObj = elData.label ? new Label(elData.label) : null;
+
+      const el = factory(elData.id, nodes, labelObj, properties);
       elementsById[el.id] = el;
       this.circuit.elements.push(el);
     }
 
     this.emit("update", { type: "restoredFromSnapshot" });
+  }
+
+  /**
+   * Rotates a group of elements around the center of their bounding box.
+   * 
+   * @param {string[]} elementIds - Array of element IDs to rotate.
+   * @param {number} rotationAngleDegrees - The rotation angle in degrees (90, 180, 270, etc.).
+   */
+  rotateElements(elementIds, rotationAngleDegrees) {
+    if (!elementIds || elementIds.length === 0) {
+      console.warn("No elements provided for rotation");
+      return;
+    }
+
+    const elements = elementIds.map(id => 
+      this.circuit.elements.find(el => el.id === id)
+    ).filter(el => el !== undefined);
+
+    if (elements.length === 0) {
+      console.warn("No valid elements found for rotation");
+      return;
+    }
+
+    // Calculate the bounding box of all selected elements
+    const boundingBox = this.calculateBoundingBox(elements);
+    
+    // Calculate the center of the bounding box
+    const centerX = (boundingBox.minX + boundingBox.maxX) / 2;
+    const centerY = (boundingBox.minY + boundingBox.maxY) / 2;
+    
+    // Convert rotation angle to radians
+    const rotationAngle = (rotationAngleDegrees * Math.PI) / 180;
+    
+    // Rotate all nodes of all elements around the bounding box center
+    elements.forEach(element => {
+      element.nodes.forEach(node => {
+        // Translate node to origin (relative to bounding box center)
+        const relativeX = node.x - centerX;
+        const relativeY = node.y - centerY;
+        
+        // Apply rotation matrix
+        const cos = Math.cos(rotationAngle);
+        const sin = Math.sin(rotationAngle);
+        
+        const rotatedX = relativeX * cos - relativeY * sin;
+        const rotatedY = relativeX * sin + relativeY * cos;
+        
+        // Translate back to absolute coordinates
+        node.x = centerX + rotatedX;
+        node.y = centerY + rotatedY;
+      });
+
+      // Update the element's orientation property (for elements that track orientation)
+      const currentOrientation = element.properties?.values?.orientation || 0;
+      const newOrientation = (currentOrientation + rotationAngleDegrees) % 360;
+      if (element.properties && element.properties.updateProperty) {
+        element.properties.updateProperty('orientation', newOrientation);
+      }
+    });
+    
+    // Emit update to trigger immediate re-render
+    this.emit("update", { type: "rotateElements", elementIds, rotationAngleDegrees, centerX, centerY });
+  }
+
+  /**
+   * Calculates the bounding box for a group of elements.
+   * 
+   * @param {Element[]} elements - Array of elements to calculate bounding box for.
+   * @returns {Object} Bounding box with minX, minY, maxX, maxY properties.
+   */
+  calculateBoundingBox(elements) {
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+
+    elements.forEach(element => {
+      element.nodes.forEach(node => {
+        minX = Math.min(minX, node.x);
+        minY = Math.min(minY, node.y);
+        maxX = Math.max(maxX, node.x);
+        maxY = Math.max(maxY, node.y);
+      });
+    });
+
+    return { minX, minY, maxX, maxY };
+  }
+
+  /**
+   * Rotates an element to a new orientation.
+   * 
+   * @param {string} elementId - The unique identifier of the element to rotate.
+   * @param {number} newOrientation - The new orientation (0, 90, 180, or 270 degrees).
+   */
+  rotateElement(elementId, newOrientation) {
+    const element = this.circuit.elements.find(el => el.id === elementId);
+    if (!element) return;
+    
+    // For single element rotation, rotate around first node
+    const currentOrientation = element?.properties?.values?.orientation || 0;
+    const rotationAngle = newOrientation - currentOrientation;
+    
+    // Calculate rotation in radians
+    const rotationAngleRad = (rotationAngle * Math.PI) / 180;
+    
+    // Use first node as rotation center for single element rotation
+    const centerX = element.nodes[0].x;
+    const centerY = element.nodes[0].y;
+    
+    // Rotate all nodes around the first node
+    element.nodes.forEach(node => {
+      // Translate node to origin (relative to first node)
+      const relativeX = node.x - centerX;
+      const relativeY = node.y - centerY;
+      
+      // Apply rotation matrix
+      const cos = Math.cos(rotationAngleRad);
+      const sin = Math.sin(rotationAngleRad);
+      const rotatedX = relativeX * cos - relativeY * sin;
+      const rotatedY = relativeX * sin + relativeY * cos;
+      
+      // Translate back to absolute coordinates
+      node.x = centerX + rotatedX;
+      node.y = centerY + rotatedY;
+    });
+    
+    // Update orientation property
+    if (element.properties && element.properties.updateProperty) {
+      element.properties.updateProperty('orientation', newOrientation);
+    }
+    
+    // Emit update to trigger immediate re-render
+    this.emit("update", { type: "rotateElement", elementId, rotationAngle });
+  }
+
+  /**
+   * Moves an element to a new position.
+   * 
+   * @param {string} elementId - The unique identifier of the element to move.
+   * @param {Position} newPosition - The new position for the reference terminal.
+   */
+  moveElement(elementId, newPosition) {
+    const element = this.circuit.elements.find(el => el.id === elementId);
+    if (!element) {
+      console.warn(`Element with ID ${elementId} not found for move`);
+      return;
+    }
+
+    // Import ElementService dynamically to avoid circular dependencies
+    import('./ElementService.js').then(({ ElementService }) => {
+      ElementService.move(element, newPosition);
+      this.emit("update", { type: "moveElement", elementId, newPosition });
+    }).catch(error => {
+      console.error("Error importing ElementService for move:", error);
+    });
   }
 }

@@ -19,10 +19,10 @@ export class GUICommand {
     }
 
     /**
-     * Binds the command to a UI element.
+     * Undoes the command, reversing its effect.
      * @abstract
      */
-    bind() {
-        throw new Error("Bind method must be implemented.");
+    undo() {
+        throw new Error("Undo method must be implemented.");
     }
 }

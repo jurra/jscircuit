@@ -8,6 +8,7 @@ import { Position } from '../../src/domain/valueObjects/Position.js';
 import { Properties } from '../../src/domain/valueObjects/Properties.js';
 import { QucatNetlistAdapter } from '../../src/infrastructure/adapters/QucatNetlistAdapter.js';
 import { ElementRegistry } from '../../src/domain/factories/ElementRegistry.js';
+import { CoordinateAdapter } from '../../src/infrastructure/adapters/CoordinateAdapter.js';
 import { generateId } from '../../src/utils/idGenerator.js';
 
 const EXPORT_PATH = './roundtrip_test_output.txt';
@@ -18,13 +19,13 @@ describe('QucatNetlistAdapter roundtrip test with CircuitService', () => {
     // Uses lowercase keys to match adapter typeMap expectations
     before(() => {
         if (!ElementRegistry.get('resistor')) {
-            ElementRegistry.register('resistor', (id, nodes, properties, label = null) =>
-                new Resistor(id, nodes, label, properties instanceof Properties ? properties : new Properties(properties))
+            ElementRegistry.register('resistor', (id, nodes, label = null, properties = new Properties({})) =>
+                new Resistor(id, nodes, label, properties instanceof Properties ? properties : new Properties(properties || {}))
             );
         }
         if (!ElementRegistry.get('wire')) {
-            ElementRegistry.register('wire', (id, nodes, properties, label = null) =>
-                new Wire(id, nodes, label, properties instanceof Properties ? properties : new Properties(properties))
+            ElementRegistry.register('wire', (id, nodes, label = null, properties = new Properties({})) =>
+                new Wire(id, nodes, label, properties instanceof Properties ? properties : new Properties(properties || {}))
             );
         }
     });
@@ -36,17 +37,19 @@ describe('QucatNetlistAdapter roundtrip test with CircuitService', () => {
         const circuit = new Circuit();
         const service = new CircuitService(circuit, ElementRegistry);
 
-        // Create and add a mix of resistors and wires
-        const r1 = new Resistor('R1', [new Position(0, 0), new Position(1, 0)], null, new Properties({ resistance: 1000 }));
-        const r2 = new Resistor('R2', [new Position(2, 1), new Position(2, 2)], null, new Properties()); // intentionally empty properties
-        const w1 = new Wire('W1', [new Position(1, 0), new Position(1, 1)]);
-        const w2 = new Wire('W2', [new Position(1, 1), new Position(2, 1)]);
+        // Create and add a mix of resistors and wires using grid-aligned pixel coordinates
+        const r1 = new Resistor('R1', [new Position(0, 0), new Position(50, 0)], null, new Properties({ resistance: 1000 }));
+        const r2 = new Resistor('R2', [new Position(20, 10), new Position(70, 10)], null, new Properties()); // intentionally empty properties
+        const w1 = new Wire('W1', [new Position(50, 0), new Position(50, 10)]);
+        const w2 = new Wire('W2', [new Position(50, 10), new Position(20, 10)]);
 
         [r1, w1, w2, r2].forEach(el => service.addElement(el));
         originalElements = service.getElements();
 
-        // Export to .qucat format (short type netlist)
-        QucatNetlistAdapter.exportToFile(circuit, EXPORT_PATH);
+        // Export to .qucat format string (browser-compatible)
+        const netlistContent = QucatNetlistAdapter.exportToString(circuit);
+        // Write to file for test compatibility
+        fs.writeFileSync(EXPORT_PATH, netlistContent, 'utf-8');
     });
 
     // Clean up files to keep tests isolated
@@ -64,7 +67,8 @@ describe('QucatNetlistAdapter roundtrip test with CircuitService', () => {
     it('Should throw an error on unknown element short type', () => {
         // Create a manually malformed line using unknown type "Z"
         fs.writeFileSync(BAD_EXPORT_PATH, `Z;0,0;1,1;10;weird`);
-        assert.throws(() => QucatNetlistAdapter.importFromFile(BAD_EXPORT_PATH), /Unknown element type/);
+        const badContent = fs.readFileSync(BAD_EXPORT_PATH, 'utf-8');
+        assert.throws(() => QucatNetlistAdapter.importFromString(badContent), /Unknown element type/);
     });
 
     it('Should import a non-empty file', () => {
@@ -73,35 +77,40 @@ describe('QucatNetlistAdapter roundtrip test with CircuitService', () => {
     });
 
     it('Should recreate all original elements', () => {
-        const imported = QucatNetlistAdapter.importFromFile(EXPORT_PATH);
+        const netlistContent = fs.readFileSync(EXPORT_PATH, 'utf-8');
+        const imported = QucatNetlistAdapter.importFromString(netlistContent);
         assert.strictEqual(imported.length, originalElements.length);
     });
 
     it('Should handle empty properties gracefully', () => {
-        const imported = QucatNetlistAdapter.importFromFile(EXPORT_PATH);
+        const netlistContent = fs.readFileSync(EXPORT_PATH, 'utf-8');
+        const imported = QucatNetlistAdapter.importFromString(netlistContent);
 
         // Since IDs are not roundtripped, match by type and node positions
+        // The logical coordinates (2,1)-(7,1) from export become pixel coordinates (20,10)-(70,10) on import
         const r2 = imported.find(el =>
             el.type === 'resistor' &&
-            el.nodes[0].x === 2 && el.nodes[0].y === 1 &&
-            el.nodes[1].x === 2 && el.nodes[1].y === 2
+            el.nodes[0].x === 20 && el.nodes[0].y === 10 &&
+            el.nodes[1].x === 70 && el.nodes[1].y === 10
         );
 
-        assert(r2, 'Expected resistor at (2,1)-(2,2)');
+        assert(r2, 'Expected resistor at pixel coordinates (20,10)-(70,10)');
         assert('resistance' in r2.properties.values);
         assert.strictEqual(r2.properties.values.resistance, undefined);
     });
 
     it('Should preserve element type mappings', () => {
-        const imported = QucatNetlistAdapter.importFromFile(EXPORT_PATH);
+        const netlistContent = fs.readFileSync(EXPORT_PATH, 'utf-8');
+        const imported = QucatNetlistAdapter.importFromString(netlistContent);
 
+        // The logical coordinates (0,0)-(5,0) from export become pixel coordinates (0,0)-(50,0) on import
         const r1 = imported.find(el =>
             el.type === 'resistor' &&
             el.nodes[0].x === 0 && el.nodes[0].y === 0 &&
-            el.nodes[1].x === 1 && el.nodes[1].y === 0
+            el.nodes[1].x === 50 && el.nodes[1].y === 0
         );
 
-        assert(r1, 'Expected resistor at (0,0)-(1,0)');
+        assert(r1, 'Expected resistor at pixel coordinates (0,0)-(50,0)');
         assert.strictEqual(r1.type, 'resistor');
     });
 
@@ -111,20 +120,22 @@ describe('QucatNetlistAdapter roundtrip test with CircuitService', () => {
     });
 
     it('Should roundtrip the entire structure accurately', () => {
-        const imported = QucatNetlistAdapter.importFromFile(EXPORT_PATH);
+        const netlistContent = fs.readFileSync(EXPORT_PATH, 'utf-8');
+        const imported = QucatNetlistAdapter.importFromString(netlistContent);
         assert.strictEqual(imported.length, originalElements.length);
 
         for (let i = 0; i < originalElements.length; i++) {
             const original = originalElements[i];
-
-            // Match by type and exact node coordinates (ID is not preserved)
+            
+            // The roundtrip should preserve pixel coordinates (original -> logical -> pixel)
+            // So we match by type and original pixel coordinates
             const roundtripped = imported.find(el =>
                 el.type === original.type &&
                 el.nodes[0].x === original.nodes[0].x && el.nodes[0].y === original.nodes[0].y &&
                 el.nodes[1].x === original.nodes[1].x && el.nodes[1].y === original.nodes[1].y
             );
 
-            assert(roundtripped, `Missing roundtripped element: type ${original.type} with nodes (${original.nodes.map(n => `${n.x},${n.y}`).join(' - ')})`);
+            assert(roundtripped, `Missing roundtripped element: type ${original.type} with nodes (${original.nodes[0].x},${original.nodes[0].y} - ${original.nodes[1].x},${original.nodes[1].y})`);
             assert.strictEqual(roundtripped.type, original.type, `Type mismatch for element`);
 
             assert.deepStrictEqual(
@@ -137,9 +148,32 @@ describe('QucatNetlistAdapter roundtrip test with CircuitService', () => {
             const expected = { ...original.properties.values };
             const actual = { ...roundtripped.properties.values };
 
+            // Handle properties that may have been added as defaults during roundtrip
+            // If a property wasn't in the original but appears in the roundtrip with a default value,
+            // and the original had it as undefined, treat them as equivalent
             for (const key of new Set([...Object.keys(expected), ...Object.keys(actual)])) {
-                if (!(key in expected)) expected[key] = undefined;
-                if (!(key in actual)) actual[key] = undefined;
+                if (!(key in expected)) {
+                    // Property was added during roundtrip, check if it's a known default
+                    if (key === 'orientation' && actual[key] === 0) {
+                        // Default orientation should be treated as equivalent to undefined
+                        expected[key] = undefined;
+                    } else {
+                        expected[key] = undefined;
+                    }
+                }
+                if (!(key in actual)) {
+                    actual[key] = undefined;
+                }
+                
+                // Normalize: treat orientation 0 and undefined as equivalent for testing
+                if (key === 'orientation') {
+                    if (expected[key] === undefined && actual[key] === 0) {
+                        expected[key] = 0; // Accept the default
+                    }
+                    if (actual[key] === undefined && expected[key] === 0) {
+                        actual[key] = 0; // Accept the default
+                    }
+                }
             }
 
             assert.deepStrictEqual(actual, expected, `Property mismatch for element with nodes ${roundtripped.nodes.map(n => `(${n.x},${n.y})`).join(', ')}`);

@@ -1,5 +1,6 @@
 import { GUICommand } from "./GUICommand.js";
 import { Position } from "../../domain/valueObjects/Position.js";
+import { GRID_CONFIG } from "../../config/gridConfig.js";
 
 /**
  * @class DragElementCommand
@@ -14,14 +15,27 @@ export class DragElementCommand extends GUICommand {
   /**
    * @constructor
    * @param {CircuitService} circuitService - The service managing circuit logic.
-   * @param {WireSplitService} wireSplitService - Handles wire-body and node-based splits.
+   * @param {CircuitRenderer|WireSplitService} circuitRendererOrWireSplitService - Either the renderer (new signature) or wireSplitService (old signature).
+   * @param {WireSplitService} wireSplitService - Handles wire-body and node-based splits (only used in new signature).
    */
-  constructor(circuitService, wireSplitService) {
+  constructor(circuitService, circuitRendererOrWireSplitService, wireSplitService) {
     super();
     this.circuitService = circuitService;
-    this.wireSplitService = wireSplitService;
+    
+    // Handle backwards compatibility
+    if (wireSplitService) {
+      // New signature: constructor(circuitService, circuitRenderer, wireSplitService)
+      this.circuitRenderer = circuitRendererOrWireSplitService;
+      this.wireSplitService = wireSplitService;
+    } else {
+      // Old signature: constructor(circuitService, wireSplitService)
+      this.circuitRenderer = null;
+      this.wireSplitService = circuitRendererOrWireSplitService;
+    }
 
     this.draggedElement = null;
+    this.selectedElements = []; // All elements being dragged
+    this.elementOffsets = new Map(); // Store relative positions for each element
 
     // Distinguishes "dragging entire shape" vs. "dragging a single node"
     this.draggingNodeIndex = null;
@@ -29,13 +43,14 @@ export class DragElementCommand extends GUICommand {
     // For storing initial offset and original position
     this.offset = { x: 0, y: 0 };
     this.nodeStartPos = { x: 0, y: 0 };
+    this.elementStartPos = new Map(); // Track initial positions for all elements
+    this.actuallyMoved = false; // Track if any actual movement occurred
 
     // Axis lock: "horizontal", "vertical", or null
     this.dragAxis = null;
 
-    // Snapping
+    // Snapping - use centralized grid configuration
     this.enableSnapping = true;
-    this.gridSpacing = 10;
 
     // If you want an immediate lock with no threshold, set below to 0
     // or to 2, 5, etc. if you want to require some minimal difference
@@ -48,6 +63,13 @@ export class DragElementCommand extends GUICommand {
    * @param {number} mouseY - Y coordinate of mouse.
    */
   start(mouseX, mouseY) {
+    // Reset movement tracking
+    this.actuallyMoved = false;
+    this.elementStartPos.clear();
+    
+    // Get currently selected elements (if circuitRenderer is available)
+    const selectedElements = this.circuitRenderer ? this.circuitRenderer.getSelectedElements() : [];
+    
     for (const element of this.circuitService.getElements()) {
       // Case 1: Check if user clicked on a wire node
       if (element.type === "wire") {
@@ -62,6 +84,14 @@ export class DragElementCommand extends GUICommand {
           this.offset.y = mouseY - node.y;
           this.nodeStartPos.x = node.x;
           this.nodeStartPos.y = node.y;
+          
+          // Store initial position for movement tracking
+          this.elementStartPos.set(element.id, {
+            nodes: element.nodes.map(n => ({ x: n.x, y: n.y }))
+          });
+          
+          // For node dragging, we only drag the specific node, not multiple elements
+          this.selectedElements = [element];
           return;
         }
       }
@@ -72,13 +102,65 @@ export class DragElementCommand extends GUICommand {
         this.draggingNodeIndex = null;
         this.dragAxis = null;
 
-        if (Array.isArray(element.nodes) && element.nodes.length > 0) {
-          const [startNode] = element.nodes;
-          this.offset.x = mouseX - startNode.x;
-          this.offset.y = mouseY - startNode.y;
+        // Store initial position for movement tracking
+        this.elementStartPos.set(element.id, {
+          nodes: element.nodes.map(n => ({ x: n.x, y: n.y }))
+        });
+
+        // Check if this element is part of a multi-selection
+        if (selectedElements.length > 1 && selectedElements.includes(element)) {
+          // Multi-element drag: setup all selected elements
+          this.selectedElements = [...selectedElements];
+          // Store initial positions for all selected elements
+          for (const el of this.selectedElements) {
+            if (!this.elementStartPos.has(el.id)) {
+              this.elementStartPos.set(el.id, {
+                nodes: el.nodes.map(n => ({ x: n.x, y: n.y }))
+              });
+            }
+          }
+          this.setupMultiElementDrag(mouseX, mouseY);
+        } else {
+          // Single element drag
+          this.selectedElements = [element];
+          if (Array.isArray(element.nodes) && element.nodes.length > 0) {
+            const [startNode] = element.nodes;
+            this.offset.x = mouseX - startNode.x;
+            this.offset.y = mouseY - startNode.y;
+          }
         }
         return;
       }
+    }
+  }
+
+  /**
+   * Setup multi-element dragging by calculating relative offsets for each element.
+   * @param {number} mouseX - X coordinate of mouse.
+   * @param {number} mouseY - Y coordinate of mouse.
+   */
+  setupMultiElementDrag(mouseX, mouseY) {
+    this.elementOffsets.clear();
+    
+    for (const element of this.selectedElements) {
+      if (Array.isArray(element.nodes) && element.nodes.length > 0) {
+        const [startNode] = element.nodes;
+        
+        // Calculate offset from mouse to this element's first node
+        const offset = {
+          x: mouseX - startNode.x,
+          y: mouseY - startNode.y
+        };
+        
+        this.elementOffsets.set(element.id, offset);
+      }
+    }
+    
+    // Set the main offset for the clicked element
+    if (Array.isArray(this.draggedElement.nodes) && this.draggedElement.nodes.length > 0) {
+      const [startNode] = this.draggedElement.nodes;
+      this.offset.x = mouseX - startNode.x;
+      this.offset.y = mouseY - startNode.y;
     }
   }
 
@@ -111,8 +193,8 @@ move(mouseX, mouseY) {
     let intendedX = mouseX - this.offset.x;
     let intendedY = mouseY - this.offset.y;
     if (this.enableSnapping) {
-      intendedX = Math.round(intendedX / this.gridSpacing) * this.gridSpacing;
-      intendedY = Math.round(intendedY / this.gridSpacing) * this.gridSpacing;
+      intendedX = GRID_CONFIG.snapToGrid(intendedX);
+      intendedY = GRID_CONFIG.snapToGrid(intendedY);
     }
 
     // Step 4: lock axis if dragging a 2-node wire
@@ -130,32 +212,91 @@ move(mouseX, mouseY) {
     // Step 5: apply movement
     node.x = intendedX;
     node.y = intendedY;
+    
+    // Check if actual movement occurred
+    if (!this.actuallyMoved) {
+      const startPos = this.elementStartPos.get(this.draggedElement.id);
+      if (startPos && startPos.nodes[this.draggingNodeIndex]) {
+        const originalNode = startPos.nodes[this.draggingNodeIndex];
+        if (Math.abs(node.x - originalNode.x) > 1 || Math.abs(node.y - originalNode.y) > 1) {
+          this.actuallyMoved = true;
+        }
+      }
+    }
   }
 
-  // Branch 2: Dragging the entire shape
+  // Branch 2: Dragging entire shapes (single or multiple elements)
   else {
-    const firstNode = this.draggedElement.nodes[0];
-    let intendedX = mouseX - this.offset.x;
-    let intendedY = mouseY - this.offset.y;
+    if (this.selectedElements.length > 1) {
+      // Multi-element drag: move all selected elements maintaining relative positions
+      this.moveMultipleElements(mouseX, mouseY);
+    } else {
+      // Single element drag (existing logic)
+      const firstNode = this.draggedElement.nodes[0];
+      let intendedX = mouseX - this.offset.x;
+      let intendedY = mouseY - this.offset.y;
 
-    if (this.enableSnapping) {
-      intendedX = Math.round(intendedX / this.gridSpacing) * this.gridSpacing;
-      intendedY = Math.round(intendedY / this.gridSpacing) * this.gridSpacing;
+      if (this.enableSnapping) {
+        intendedX = GRID_CONFIG.snapToGrid(intendedX);
+        intendedY = GRID_CONFIG.snapToGrid(intendedY);
+      }
+
+      const deltaX = intendedX - firstNode.x;
+      const deltaY = intendedY - firstNode.y;
+
+      this.draggedElement.nodes = this.draggedElement.nodes.map(
+        (n) => new Position(n.x + deltaX, n.y + deltaY)
+      );
+      
+      // Check if actual movement occurred
+      if (!this.actuallyMoved && (Math.abs(deltaX) > 1 || Math.abs(deltaY) > 1)) {
+        this.actuallyMoved = true;
+      }
     }
-
-    const deltaX = intendedX - firstNode.x;
-    const deltaY = intendedY - firstNode.y;
-
-    this.draggedElement.nodes = this.draggedElement.nodes.map(
-      (n) => new Position(n.x + deltaX, n.y + deltaY)
-    );
   }
 
   // Emit update event so the UI re-renders
   this.circuitService.emit("update", {
     type: "dragElement",
     element: this.draggedElement,
+    selectedElements: this.selectedElements,
   });
+}
+
+/**
+ * Move multiple selected elements while maintaining their relative positions.
+ * @param {number} mouseX - X coordinate of mouse.
+ * @param {number} mouseY - Y coordinate of mouse.
+ */
+moveMultipleElements(mouseX, mouseY) {
+  for (const element of this.selectedElements) {
+    if (!Array.isArray(element.nodes) || element.nodes.length === 0) continue;
+    
+    const elementOffset = this.elementOffsets.get(element.id);
+    if (!elementOffset) continue;
+    
+    const firstNode = element.nodes[0];
+    let intendedX = mouseX - elementOffset.x;
+    let intendedY = mouseY - elementOffset.y;
+
+    if (this.enableSnapping) {
+      intendedX = GRID_CONFIG.snapToGrid(intendedX);
+      intendedY = GRID_CONFIG.snapToGrid(intendedY);
+    }
+
+    const deltaX = intendedX - firstNode.x;
+    const deltaY = intendedY - firstNode.y;
+
+    // Apply the same delta to all nodes of this element
+    element.nodes = element.nodes.map(
+      (n) => new Position(n.x + deltaX, n.y + deltaY)
+    );
+    
+    // Check if actual movement occurred
+    if (!this.actuallyMoved && (Math.abs(deltaX) > 1 || Math.abs(deltaY) > 1)) {
+      this.actuallyMoved = true;
+    }
+  }
 }
 
 
@@ -166,7 +307,9 @@ move(mouseX, mouseY) {
    * - splitting the dragged wire if its body touches another node
    */
   stop() {
+    // Only perform wire splitting checks if the element was actually moved
     if (
+      this.actuallyMoved &&
       this.draggedElement?.type === "wire" &&
       Array.isArray(this.draggedElement.nodes) &&
       this.draggedElement.nodes.length === 2
@@ -210,7 +353,10 @@ move(mouseX, mouseY) {
           }
 
           // Case: dragged node touches another wire's body
-          this.wireSplitService.trySplitAtNode(node);
+          // Only check if the node was actually moved
+          if (this.actuallyMoved) {
+            this.wireSplitService.trySplitAtNode(node);
+          }
         }
       }
     }
@@ -226,6 +372,8 @@ move(mouseX, mouseY) {
     this.draggedElement = null;
     this.draggingNodeIndex = null;
     this.dragAxis = null;
+    this.actuallyMoved = false;
+    this.elementStartPos.clear();
   }
 
   /**
