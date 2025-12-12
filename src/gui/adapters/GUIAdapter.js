@@ -112,14 +112,26 @@ export class GUIAdapter {
     rendererFactory,
     guiCommandRegistry,
   ) {
-    /** @private @const {!HTMLCanvasElement} */
+    /**
+     * @private
+     * @type {!HTMLCanvasElement}
+     */
     this.canvas = canvas;
-    /** @private @const {!CircuitService} */
+    /**
+     * @private
+     * @type {!CircuitService}
+     */
     this.circuitService = circuitService;
-    /** @private @const {!ElementRegistry} */
+    /**
+     * @private
+     * @type {!ElementRegistry}
+     */
     this.elementRegistry = elementRegistry;
 
-    /** @private @const {!CircuitRenderer} */
+    /**
+     * @private
+     * @type {!CircuitRenderer}
+     */
     this.circuitRenderer = new CircuitRenderer(
       canvas,
       circuitService,
@@ -127,16 +139,28 @@ export class GUIAdapter {
       () => this.activeCommand !== null, // Function to check if there's an active command
     );
 
-    /** @private @const {!GUICommandRegistry} */
+    /**
+     * @private
+     * @type {!GUICommandRegistry}
+     */
     this.guiCommandRegistry = guiCommandRegistry;
 
-    /** @private @const {!CommandHistory} */
+    /**
+     * @private
+     * @type {!CommandHistory}
+     */
     this.commandHistory = new CommandHistory();
 
     // Interaction state
-    /** @private */
+    /**
+     * @private
+     * @type {?Command}
+     */
     this.activeCommand = null;
-    /** @private */
+    /**
+     * @private
+     * @type {boolean}
+     */
     this.hasDragged = false;
     /** @private */
     this.mouseDownPos = { x: 0, y: 0 };

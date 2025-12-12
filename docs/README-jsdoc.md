@@ -1,7 +1,7 @@
 # 🔬 QuCat Circuit Generator - Professional Extension API
 
 <div align="center">
-  <img src="../qucat-logo.png" alt="QuCat Logo" height="80" style="margin-bottom: 1rem;">
+  <img src="qucat-logo.png" alt="QuCat Logo" height="80" style="margin-bottom: 1rem;">
   
   **Modern, Professional API for Quantum Circuit Design Extensions**
   
@@ -57,7 +57,7 @@ The QuCat Circuit Generator follows **Domain-Driven Design** with **Hexagonal Ar
 
 <div style="text-align: center; margin: 20px 0;">
   <iframe 
-    src="../../dist/gui.html" 
+    src="app/jscircuit.html" 
     width="100%" 
     height="600" 
     style="border: 2px solid #e74c3c; border-radius: 8px; background: #f8f9fa;"

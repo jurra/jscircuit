@@ -14,12 +14,13 @@
       "./src/gui/commands/GUICommandRegistry.js"
     ],
     "includePattern": "\\.(js|jsx|md)$",
-    "excludePattern": "(node_modules/|dist/|build/|tests/)"
+    "excludePattern": "(node_modules/|docs/dist/|dist/|build/|tests/)"
   },
   "opts": {
-    "destination": "./docs/dist/extension-api/",
+    "destination": "./dist/docs_temp",
     "recurse": false,
-    "readme": "./docs/README-jsdoc.md"
+    "readme": "./docs/README-jsdoc.md",
+    "tutorials": "./docs/pages"
   },
   "plugins": [
     "plugins/markdown",
@@ -74,25 +75,31 @@
     "private": false,
     "removeQuotes": "none",
     "scripts": [],
-    "css": ["../custom-styles.css"],
+    "css": ["custom-styles.css"],
     "theme": "dark",
     "title": "QuCat Circuit Generator",
-    "logo": "../qucat-logo.png",
+    "logo": "qucat-logo.png",
     "menu": {
       "📚 Getting Started": {
-        "href": "../getting-started.md",
+        "href": "tutorial-getting-started.html",
         "target": "_self",
         "class": "menu-item primary-menu",
         "id": "getting-started"
       },
       "🏗️ Extension Guide": {
-        "href": "../EXTENSION_GUIDE.md", 
+        "href": "tutorial-extension-guide.html",
         "target": "_self",
         "class": "menu-item primary-menu",
         "id": "extension-guide"
       },
+      "🏛️ Architecture": {
+        "href": "tutorial-overview.html",
+        "target": "_self",
+        "class": "menu-item primary-menu",
+        "id": "architecture"
+      },
       "🔧 Live Demo": {
-        "href": "../embedded-demo.html",
+        "href": "app/jscircuit.html",
         "target": "_blank",
         "class": "menu-item demo-menu",
         "id": "live-demo"
