@@ -192,7 +192,6 @@ export class CircuitRenderer {
         // this.renderSelectionBoundingBox();
         
         const renderDuration = globalPerformanceMonitor.endTiming('circuit-render');
-        Logger.debug(`Render completed in ${renderDuration.toFixed(2)}ms`);
     }
 
     /**
@@ -339,7 +338,6 @@ export class CircuitRenderer {
      */
     handleDoubleClick(event) {
         event.preventDefault();
-        console.log("[CircuitRenderer] Double-click detected");
 
         const rect = this.canvas.getBoundingClientRect();
         const mouseX = event.clientX - rect.left;
@@ -349,20 +347,15 @@ export class CircuitRenderer {
         const logicalX = (mouseX - this.offsetX) / this.scale;
         const logicalY = (mouseY - this.offsetY) / this.scale;
 
-        console.log("[CircuitRenderer] Double-click at logical coordinates:", logicalX, logicalY);
 
         // Find element at click position
         const clickedElement = this.findElementAtPosition(logicalX, logicalY);
-        console.log("[CircuitRenderer] Found element at position:", clickedElement);
 
         if (clickedElement && this.onElementDoubleClick) {
-            console.log("[CircuitRenderer] Calling double-click callback with element:", clickedElement.id);
             // Delegate to the GUIAdapter via callback
             this.onElementDoubleClick(clickedElement);
         } else if (!clickedElement) {
-            console.log("[CircuitRenderer] No element found at double-click position");
         } else if (!this.onElementDoubleClick) {
-            console.log("[CircuitRenderer] No double-click callback set");
         }
     }
 
@@ -404,7 +397,6 @@ export class CircuitRenderer {
      * Set callback for element double-click events
      */
     setElementDoubleClickCallback(callback) {
-        console.log("[CircuitRenderer] Setting double-click callback");
         this.onElementDoubleClick = callback;
     }
 
@@ -479,7 +471,6 @@ export class CircuitRenderer {
         
         const hoverDuration = globalPerformanceMonitor.endTiming('hover-check');
         if (hoverDuration > 5) { // Log if hover check is slow
-            Logger.debug(`Slow hover check: ${hoverDuration.toFixed(2)}ms for ${elements?.length || 0} elements`);
         }
     }
 
@@ -620,7 +611,6 @@ export class CircuitRenderer {
         this.hoveredElement = null;
         this.selectedElement = null;
         
-        Logger.debug('CircuitRenderer disposed');
     }
 
     /**
@@ -828,7 +818,6 @@ export class CircuitRenderer {
         // Trigger re-render to apply the new centering
         this.render();
         
-        Logger.info(`View recentered - logical coordinate (0,0) is now at canvas center (${canvasCenterX}, ${canvasCenterY})`);
     }
 
     /**
@@ -851,6 +840,5 @@ export class CircuitRenderer {
         canvasContainer.scrollLeft = Math.max(0, scrollLeft);
         canvasContainer.scrollTop = Math.max(0, scrollTop);
         
-        Logger.info(`Scroll position centered: left=${canvasContainer.scrollLeft}, top=${canvasContainer.scrollTop}`);
     }
 }
