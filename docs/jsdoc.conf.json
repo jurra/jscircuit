@@ -19,7 +19,7 @@
   "opts": {
     "destination": "./dist/docs_temp",
     "recurse": false,
-    "readme": "./docs/README-jsdoc.md",
+    "readme": "./docs/pages/index.md",
     "tutorials": "./docs/pages"
   },
   "plugins": [
@@ -78,34 +78,34 @@
     "css": ["custom-styles.css"],
     "theme": "dark",
     "title": "QuCat Circuit Generator",
-    "logo": "qucat-logo.png",
+    "logo": "assets/logo.png",
     "menu": {
-      "📚 Getting Started": {
+      "Getting Started": {
         "href": "tutorial-getting-started.html",
         "target": "_self",
         "class": "menu-item primary-menu",
         "id": "getting-started"
       },
-      "🏗️ Extension Guide": {
+      "Extension Guide": {
         "href": "tutorial-extension-guide.html",
         "target": "_self",
         "class": "menu-item primary-menu",
         "id": "extension-guide"
       },
-      "🏛️ Architecture": {
+      "Architecture": {
         "href": "tutorial-overview.html",
         "target": "_self",
         "class": "menu-item primary-menu",
         "id": "architecture"
       },
-      "🔧 Live Demo": {
+      "Live Demo": {
         "href": "app/jscircuit.html",
         "target": "_blank",
         "class": "menu-item demo-menu",
         "id": "live-demo"
       },
-      "📂 GitHub": {
-        "href": "https://github.com/jurra/qucat-circuit-generator",
+      "GitHub": {
+        "href": "https://github.com/qucat/gui-circuit-generator",
         "target": "_blank",
         "class": "menu-item github-menu",
         "id": "github-link"

@@ -1,37 +1,35 @@
-# Getting Started
+# Interactive Demo
 
-Welcome to the **QuCat Circuit Generator**! This guide will help you get started with designing quantum circuits.
+Test the QuCat Circuit Generator directly in your browser.
 
-## Quick Start
+## Challenge: The LC Tank Circuit
 
-The QuCat Circuit Generator provides an interactive canvas for designing quantum circuits with:
-- **Capacitors (C)** - Energy storage
-- **Inductors (L)** - Magnetic elements  
-- **Josephson Junctions (J)** - Superconducting elements
-- **Resistors (R)** - Dissipation
-- **Wires (W)** - Connections
-- **Ground (G)** - Reference points
+**Goal:** Replicate the circuit described by the netlist below.
 
-## Live Demo
+### Target Netlist
+```text
+C1 0 1 1e-12
+L1 1 0 1e-9
+```
+*(A Capacitor and Inductor in parallel, connected between Ground (0) and Node 1)*
 
-Try the live demo by clicking **🔧 Live Demo** in the menu above.
+### Live Editor
 
-## Basic Controls
+<iframe src="app/jscircuit.html" width="100%" height="600px" style="border: 1px solid #ccc; border-radius: 4px;"></iframe>
 
-| Key | Action |
-|-----|--------|
-| **C** | Add Capacitor |
-| **L** | Add Inductor |
-| **J** | Add Junction |
-| **R** | Add Resistor |
-| **W** | Add Wire |
-| **G** | Add Ground |
-| **Del** | Delete selected element |
-| **Ctrl+Z** | Undo last action |
-| **Ctrl+Y** | Redo action |
+### Instructions
+
+1.  **Add a Capacitor**: Press **C** or click the Capacitor icon. Place it on the canvas.
+2.  **Add an Inductor**: Press **L** or click the Inductor icon. Place it parallel to the capacitor.
+3.  **Add Ground**: Press **G** to add a ground connection (Node 0).
+4.  **Connect Wires**: Press **W** to draw wires connecting the components.
+5.  **Verify**: Check if your circuit structure matches the parallel configuration.
+
+---
 
 ## Next Steps
 
-- Read the {@tutorial installation} guide
-- Try {@tutorial first-circuit} to build your first circuit
-- Learn about {@tutorial custom-elements} to extend the system
+Now that you've tried the editor, learn how to extend it:
+
+- {@tutorial extension-guide} - Overview of the extension system
+- {@tutorial custom-elements} - Add your own components
