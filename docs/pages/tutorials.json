@@ -1,9 +1,7 @@
 {
-  "getting-started": { "title": "Getting Started" },
+  "getting-started": { "title": "Interactive Demo" },
   "extension-guide": { "title": "Extension Guide" },
   "overview": { "title": "Architecture" },
-  "basic-usage": { "title": "Basic Usage" },
-  "first-circuit": { "title": "First Circuit" },
   "installation": { "title": "Installation" },
   "custom-elements": { "title": "Custom Elements" },
   "custom-renderers": { "title": "Custom Renderers" },
