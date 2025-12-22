@@ -1,5 +1,3 @@
-# Custom Renderers
-
 Renderers control how circuit elements are drawn on the canvas. This guide shows you how to create beautiful, interactive visualizations.
 
 ## Renderer Basics

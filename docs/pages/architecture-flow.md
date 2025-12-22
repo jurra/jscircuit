@@ -1,5 +1,3 @@
-# Architecture Flow Diagram
-
 This diagram shows the overall data flow and interactions between architectural layers.
 
 ```mermaid

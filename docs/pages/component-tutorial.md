@@ -1,5 +1,3 @@
-# Component Development Tutorial
-
 <div align="center">
   <img src="qucat-logo.png" alt="JSCircuit Logo" height="60"/>
   <h2>Creating Custom Components</h2>
