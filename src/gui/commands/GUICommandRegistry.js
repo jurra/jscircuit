@@ -1,3 +1,12 @@
+/**
+ * @module GUI/Commands
+ * @description
+ * **GUI Layer - Command Registry**
+ *
+ * Registry for all available GUI commands. This is a key extension point
+ * where new user actions are registered and mapped to their implementations.
+ */
+
 class GUICommandRegistryClass {
     constructor() {
         if (!GUICommandRegistryClass.instance) {

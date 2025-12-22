@@ -5,7 +5,7 @@
  * This class serves as a simplified alternative to Node.js' `EventEmitter`, designed
  * to work seamlessly in both **browser** and **Node.js** environments.
  * 
- *  **Role in the QuCat Circuit Generator:**
+ *  **Role in the JSCircuit Editor:**
  * - Used by `CircuitService` to emit events when elements are added, deleted, or modified.
  * - Enables **event-driven UI updates** in `GUIAdapter`, allowing the frontend to react to changes.
  * - Provides a **decoupled** way to manage event-driven communication across modules.

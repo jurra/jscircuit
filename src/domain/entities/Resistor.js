@@ -10,7 +10,7 @@ import { Resistance } from '../valueObjects/Resistance.js';
  * between two connection points.
  *
  * A resistor is a passive two-terminal electrical component that implements electrical
- * resistance as a circuit element. In the QuCat circuit generator, resistors are
+ * resistance as a circuit element. In the JSCircuit Editor, resistors are
  * fundamental components used for impedance control and signal conditioning.
  *
  * **Physical Properties:**

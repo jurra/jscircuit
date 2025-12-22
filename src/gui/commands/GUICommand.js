@@ -1,8 +1,17 @@
 /**
+ * @module GUI/Commands
+ * @description
+ * **GUI Layer - Command System**
+ *
+ * Implementation of the Command Pattern for user interactions.
+ * Provides the base classes and infrastructure for undoable/redoable actions.
+ */
+
+/**
  * @class GUICommand
  * @abstract
  * @description
- * Abstract base class for all GUI-related commands in the QuCat Circuit Generator.
+ * Abstract base class for all GUI-related commands in the JSCircuit Editor.
  *
  * This class implements the Command Pattern, providing a standardized interface
  * for encapsulating user actions and enabling features like undo/redo, command

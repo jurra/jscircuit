@@ -3,7 +3,7 @@
  * @description
  * 🏗️ **Domain Layer - Circuit Elements**
  *
- * Core entities representing physical circuit components in the QuCat Circuit Generator.
+ * Core entities representing physical circuit components in the JSCircuit Editor.
  * This module provides the foundation for all circuit elements following Domain-Driven Design principles.
  */
 
@@ -15,7 +15,7 @@ import { Properties } from '../valueObjects/Properties.js';
  * @class Element
  * @abstract
  * @description
- * Abstract base class for all circuit elements in the QuCat Circuit Generator.
+ * Abstract base class for all circuit elements in the JSCircuit Editor.
  *
  * This class serves as the foundation for all physical circuit components (resistors,
  * capacitors, wires, etc.) and defines the common interface that all elements must implement.

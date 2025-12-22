@@ -1,4 +1,13 @@
 /**
+ * @module Domain/Factories
+ * @description
+ * **Domain Layer - Element Registry**
+ *
+ * Central registry for creating circuit elements. This is a key extension point
+ * where new element types are registered so the system knows how to instantiate them.
+ */
+
+/**
  * 	A simple map storing factory functions for elements. Used for lookup
  * 	when creating new elements based on their type.
  */

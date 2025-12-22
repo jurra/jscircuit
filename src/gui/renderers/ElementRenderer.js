@@ -1,7 +1,7 @@
 /**
  * @class ElementRenderer
  * @description
- * Base class for all circuit element renderers in the QuCat Circuit Generator.
+ * Base class for all circuit element renderers in the JSCircuit Editor.
  *
  * This abstract renderer provides common functionality for rendering circuit elements
  * on the HTML5 canvas, including terminal rendering, label placement, selection

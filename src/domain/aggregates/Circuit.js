@@ -1,7 +1,7 @@
 /**
  * @class Circuit
  * @description
- * Domain aggregate representing a complete circuit design in the QuCat Circuit Generator.
+ * Domain aggregate representing a complete circuit design in the JSCircuit Editor.
  *
  * This is the core aggregate in our Domain-Driven Design architecture that maintains
  * the integrity of a circuit by managing elements and their connections. It enforces

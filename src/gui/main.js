@@ -1,8 +1,8 @@
 /**
- * @fileoverview QuCat Circuit Generator - Application Entry Point
+ * @fileoverview JSCircuit Editor - Application Entry Point
  * @description
  * This is the main application bootstrap file demonstrating how to initialize and
- * configure the QuCat Circuit Generator using the hexagonal architecture API.
+ * configure the JSCircuit Editor using the hexagonal architecture API.
  *
  * **Architecture Example:**
  * This file serves as a practical example of how the different architectural layers

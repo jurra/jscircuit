@@ -3,13 +3,13 @@
  * @description
  * ⚙️ **Configuration Layer - Application Setup**
  *
- * Central configuration and dependency injection for the QuCat Circuit Generator.
+ * Central configuration and dependency injection for the JSCircuit Editor.
  * This module implements the Registry pattern and provides the main setup
  * functions that developers need to extend the application.
  */
 
 /**
- * @fileoverview Central Configuration Module for QuCat Circuit Generator
+ * @fileoverview Central Configuration Module for JSCircuit Editor
  * @description
  * This module serves as the application's main configuration hub, handling the registration
  * and setup of all circuit elements, renderers, and GUI commands. It implements the
