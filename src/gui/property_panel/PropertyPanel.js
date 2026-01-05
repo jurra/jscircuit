@@ -363,9 +363,14 @@ export class PropertyPanel {
      * @private
      */
     showValidationWarning() {
+        // Add warning dialog styles FIRST
+        this.addWarningStyles();
+        
         // Create warning dialog
         const warningOverlay = document.createElement('div');
         warningOverlay.className = 'property-panel-warning-overlay';
+        // Hide completely with inline style to prevent flash
+        warningOverlay.style.display = 'none';
         
         const warningDialog = document.createElement('div');
         warningDialog.className = 'property-panel-warning-dialog';
@@ -390,8 +395,17 @@ export class PropertyPanel {
         warningOverlay.appendChild(warningDialog);
         document.body.appendChild(warningOverlay);
         
-        // Add warning dialog styles
-        this.addWarningStyles();
+        // Use double rAF to ensure layout is calculated before showing
+        requestAnimationFrame(() => {
+            // Remove inline display:none
+            warningOverlay.style.display = '';
+            // Force reflow
+            warningOverlay.offsetHeight;
+            // Add visible class in next frame
+            requestAnimationFrame(() => {
+                warningOverlay.classList.add('property-panel-warning-overlay-visible');
+            });
+        });
         
         // Handle warning dialog close
         const okBtn = warningDialog.querySelector('.warning-ok-btn');
@@ -690,7 +704,14 @@ export class PropertyPanel {
                 justify-content: center;
                 align-items: center;
                 z-index: 1001;
-                animation: fadeIn 0.15s ease-out;
+                visibility: hidden;
+                opacity: 0;
+            }
+            
+            .property-panel-warning-overlay-visible {
+                visibility: visible;
+                opacity: 1;
+                transition: opacity 0.15s ease-out;
             }
 
             .property-panel-warning-dialog {
@@ -701,8 +722,13 @@ export class PropertyPanel {
                 width: 90%;
                 max-height: 90vh;
                 overflow-y: auto;
-                animation: slideIn 0.2s ease-out;
                 border: 1px solid #e0e0e0;
+                transform: scale(0.95);
+            }
+            
+            .property-panel-warning-overlay-visible .property-panel-warning-dialog {
+                transform: scale(1);
+                transition: transform 0.15s ease-out;
             }
 
             .warning-header {
@@ -765,22 +791,6 @@ export class PropertyPanel {
             .warning-ok-btn:hover {
                 background: #0056b3;
                 border-color: #0056b3;
-            }
-
-            @keyframes fadeIn {
-                from { opacity: 0; }
-                to { opacity: 1; }
-            }
-
-            @keyframes slideIn {
-                from {
-                    opacity: 0;
-                    transform: translate(-50%, -48%) scale(0.9);
-                }
-                to {
-                    opacity: 1;
-                    transform: translate(-50%, -50%) scale(1);
-                }
             }
         `;
 
