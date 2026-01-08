@@ -255,6 +255,7 @@ export class GUIAdapter {
   bindShortcuts(keymap) {
     const signature = (e) => {
       const ctrl = e.ctrlKey || e.metaKey ? "Ctrl+" : "";
+      const shift = e.shiftKey ? "Shift+" : "";
       let key = e.key;
       
       // Map arrow keys to text names to match menu config
@@ -279,7 +280,7 @@ export class GUIAdapter {
         key = key.toUpperCase();
       }
       
-      return ctrl + key;
+      return ctrl + shift + key;
     };
 
     this._onKeydown = (e) => {
