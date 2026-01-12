@@ -7,7 +7,7 @@ By replicating this circuit, you will gain hands-on experience with the JSCircui
 
 Explore the menu options to familiarize with the features and the keystrokes to create the various elements. Make sure to save the circuit as a netlist once completed.
 
-![alt text](../../assets/example-challenge.png)
+![alt text](assets/example-challenge.png)
 
 ### Live Editor
 
