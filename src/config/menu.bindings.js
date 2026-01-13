@@ -1,4 +1,4 @@
-import guiConfig from "../../dist/static/gui.config.json" with { type: "json" };
+import guiConfig from "./gui.config.js";
 
 /**
  * Expands component references in menu items

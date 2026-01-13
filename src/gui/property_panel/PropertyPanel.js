@@ -6,6 +6,7 @@
 import { CircuitService } from '../../application/CircuitService.js';
 import { UpdateElementPropertiesCommand } from '../commands/UpdateElementPropertiesCommand.js';
 import { CommandHistory } from '../commands/CommandHistory.js';
+import guiConfig from '../../config/gui.config.js';
 
 /**
  * PropertyPanel class for displaying and editing element properties
@@ -20,29 +21,15 @@ export class PropertyPanel {
         this.panelElement = null;
         this.overlayElement = null;
         this.boundKeyDownHandler = null; // Store bound handler for cleanup
-        this.guiConfig = null; // Will be loaded from gui.config.json
     }
 
     /**
-     * Load GUI configuration from static JSON
+     * Configuration is loaded statically via import at build time
+     * No runtime fetch needed - fully embedded in bundle
      * @private
      */
-    async loadConfig() {
-        if (this.guiConfig) return this.guiConfig;
-        
-        try {
-            const response = await fetch('./static/gui.config.json');
-            if (!response.ok) {
-                throw new Error(`Failed to load GUI config: ${response.statusText}`);
-            }
-            this.guiConfig = await response.json();
-            return this.guiConfig;
-        } catch (error) {
-            console.error('[PropertyPanel] Error loading GUI config:', error);
-            // Fallback to empty config
-            this.guiConfig = { components: {} };
-            return this.guiConfig;
-        }
+    getConfig() {
+        return guiConfig;
     }
 
     /**
@@ -51,13 +38,10 @@ export class PropertyPanel {
      * @param {Function} onSave - Callback when properties are saved (element, newProperties) => void
      * @param {Function} onCancel - Callback when editing is cancelled
      */
-    async show(element, onSave, onCancel) {
+    show(element, onSave, onCancel) {
         if (this.isVisible) {
             this.hide();
         }
-
-        // Load config if not already loaded
-        await this.loadConfig();
 
         this.currentElement = element;
         this.onSave = onSave;
@@ -127,8 +111,8 @@ export class PropertyPanel {
         const properties = element.getProperties();
         const currentLabel = element.label ? element.label.value || element.label : '';
         
-        // Get configuration from loaded GUI config
-        const config = this.guiConfig?.components?.[elementType]?.propertyPanel;
+        // Get configuration from statically imported GUI config
+        const config = this.getConfig().components?.[elementType]?.propertyPanel;
         
         if (!config) {
             console.warn(`[PropertyPanel] No configuration found for element type: "${elementType}"`);
@@ -182,6 +166,10 @@ export class PropertyPanel {
      * @private
      */
     generateFallbackContent(elementType, currentLabel) {
+        const availableConfigs = Object.keys(this.getConfig().components || {});
+        console.warn(`[PropertyPanel] No configuration found for element type: "${elementType}"`);
+        console.warn(`[PropertyPanel] Available configurations:`, availableConfigs);
+        
         return `
             <div class="property-panel-header">
                 <h3>Circuit Editor</h3>

@@ -1,7 +1,6 @@
 // static/initMenu.js
 import { MenuBar } from "./MenuBar.js";
-
-async function loadJSON(url){ const r = await fetch(url); if(!r.ok) throw new Error(url); return r.json(); }
+import guiConfig from "../../config/gui.config.js";
 
 /**
  * Expands component references in menu items to full menu item definitions
@@ -39,11 +38,10 @@ function expandComponentReferences(guiConfig) {
   return { ...guiConfig, menus: expandedMenus };
 }
 
-export async function initMenu(configUrl = "./static/gui.config.json") {
-  const cfg = await loadJSON(configUrl);
-  
-  // Expand component references to full menu items
-  const expandedConfig = expandComponentReferences(cfg);
+export function initMenu() {
+  // Configuration is now statically imported at build time
+  // No runtime fetch needed - fully embedded in bundle
+  const expandedConfig = expandComponentReferences(guiConfig);
   
   const menu = new MenuBar(document.getElementById("menubar"));
   menu.renderFromConfig(expandedConfig);

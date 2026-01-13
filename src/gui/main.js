@@ -149,7 +149,7 @@ const guiAdapter = new GUIAdapter(                // GUI: Primary adapter
 );
 
 /* ---------- Menu (emits ui:action only) ---------- */
-await initMenu();
+initMenu();
 
 /* ---------- Commands, first render, reveal, THEN start resize observer ---------- */
 globalPerformanceMonitor.startTiming('app-initialization');
