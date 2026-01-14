@@ -110,6 +110,11 @@ menus:
         shortcut: Ctrl+S
         action: { kind: command, name: saveNetlist }
 
+      - id: copyNetlistToClipboard
+        label: "Copy Netlist"
+        shortcut: Ctrl+Shift+C
+        action: { kind: command, name: copyNetlistToClipboard }
+
       - type: separator
 
       - id: deleteAll
