@@ -301,7 +301,6 @@ export class GUIAdapter {
         this.placingElement = null;
         // Clear selection since placement was cancelled
         this.circuitRenderer.setSelectedElements([]);
-        this.circuitRenderer.render();
         e.preventDefault();
         return;
       }
@@ -345,8 +344,8 @@ export class GUIAdapter {
    * Leaves normal scrolling alone if Ctrl is not pressed.
    */
   bindWheelZoom() {
-    // Let CircuitRenderer handle wheel events directly - it has its own zoom method
-    // No need to bind wheel events here as CircuitRenderer.initEventListeners() handles them
+    this._onWheel = (event) => this.circuitRenderer.zoom(event);
+    this.canvas.addEventListener("wheel", this._onWheel);
   }
 
   /**
@@ -546,8 +545,7 @@ export class GUIAdapter {
     this.canvas.addEventListener("mousedown", (event) => {
       if (event.button === 1) {
         this.canvas.style.cursor = "grabbing";
-        this.panStartX = event.clientX - this.circuitRenderer.offsetX;
-        this.panStartY = event.clientY - this.circuitRenderer.offsetY;
+        this.circuitRenderer.startPan(event);
         return;
       }
 
@@ -580,7 +578,6 @@ export class GUIAdapter {
         this.placingElement = null;
         // Keep the placed element selected for user convenience
         this.circuitRenderer.setSelectedElements([placedElement]);
-        this.circuitRenderer.render();
         
         // Open property panel immediately after placing element
         this.handleElementDoubleClick(placedElement, true); // true indicates this is a newly placed element
@@ -635,6 +632,10 @@ export class GUIAdapter {
 
     // Move / live placement preview / command move
     this.canvas.addEventListener("mousemove", (event) => {
+      // Delegate panning and hover detection to the renderer first
+      this.circuitRenderer.pan(event);
+      this.circuitRenderer.handleMouseMove(event);
+
       const { offsetX, offsetY } = this.getTransformedMousePosition(event);
       
       // Always track current mouse position for immediate element placement
@@ -686,6 +687,7 @@ export class GUIAdapter {
     this.canvas.addEventListener("mouseup", (event) => {
       if (event.button === 1) {
         this.canvas.style.cursor = "default";
+        this.circuitRenderer.stopPan();
         return;
       }
 
@@ -764,6 +766,17 @@ export class GUIAdapter {
         this.resetCursor();
       }
     });
+
+    // Mouse leave → stop panning and clear hover highlights
+    this.canvas.addEventListener("mouseleave", () => {
+      this.circuitRenderer.stopPan();
+      this.circuitRenderer.clearAllHovers();
+    });
+
+    // Double-click → open property panel (delegates element detection to renderer)
+    this.canvas.addEventListener("dblclick", (event) => {
+      this.circuitRenderer.handleDoubleClick(event);
+    });
   }
 
   /**
@@ -809,7 +822,6 @@ export class GUIAdapter {
           this.circuitService.deleteElement(element.id);
           // Clear selections since we deleted the element
           this.circuitRenderer.setSelectedElements([]);
-          this.circuitRenderer.render();
         }
       }
     );
@@ -1136,8 +1148,5 @@ export class GUIAdapter {
       type: 'rotatePlacingElement',
       element: this.placingElement,
     });
-    
-    // Force immediate re-render to show rotation
-    this.circuitRenderer.render();
   }
 }
