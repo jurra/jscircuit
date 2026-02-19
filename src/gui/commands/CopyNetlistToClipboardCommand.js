@@ -11,11 +11,13 @@ export class CopyNetlistToClipboardCommand extends GUICommand {
     /**
      * @param {CircuitService} circuitService - The circuit service
      * @param {CircuitRenderer} circuitRenderer - The circuit renderer for UI updates
+     * @param {(message: string, type: 'success'|'error') => void} notify - Notification callback
      */
-    constructor(circuitService, circuitRenderer) {
+    constructor(circuitService, circuitRenderer, notify) {
         super();
         this.circuitService = circuitService;
         this.circuitRenderer = circuitRenderer;
+        this.notify = notify || (() => {});
     }
 
     /**
@@ -109,41 +111,7 @@ export class CopyNetlistToClipboardCommand extends GUICommand {
      * @private
      */
     _showSuccessNotification(message) {
-        // Only show notification in browser environment
-        if (typeof document === "undefined" || !document.body) {
-            return;
-        }
-
-        // Create a simple notification element
-        const notification = document.createElement('div');
-        notification.textContent = message;
-        notification.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background-color: #4caf50;
-            color: white;
-            padding: 12px 20px;
-            border-radius: 4px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            z-index: 10000;
-            font-family: Arial, sans-serif;
-            font-size: 14px;
-        `;
-        
-        document.body.appendChild(notification);
-        
-        // Remove notification after 3 seconds
-        setTimeout(() => {
-            notification.style.opacity = '0';
-            notification.style.transition = 'opacity 0.3s';
-            setTimeout(() => {
-                // Check if notification is still in the DOM before removing
-                if (notification.parentNode === document.body) {
-                    document.body.removeChild(notification);
-                }
-            }, 300);
-        }, 3000);
+        this.notify(message, 'success');
     }
 
     /**
@@ -152,40 +120,6 @@ export class CopyNetlistToClipboardCommand extends GUICommand {
      * @private
      */
     _showErrorNotification(message) {
-        // Only show notification in browser environment
-        if (typeof document === "undefined" || !document.body) {
-            return;
-        }
-
-        // Create a simple notification element
-        const notification = document.createElement('div');
-        notification.textContent = message;
-        notification.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background-color: #f44336;
-            color: white;
-            padding: 12px 20px;
-            border-radius: 4px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            z-index: 10000;
-            font-family: Arial, sans-serif;
-            font-size: 14px;
-        `;
-        
-        document.body.appendChild(notification);
-        
-        // Remove notification after 3 seconds
-        setTimeout(() => {
-            notification.style.opacity = '0';
-            notification.style.transition = 'opacity 0.3s';
-            setTimeout(() => {
-                // Check if notification is still in the DOM before removing
-                if (notification.parentNode === document.body) {
-                    document.body.removeChild(notification);
-                }
-            }, 300);
-        }, 3000);
+        this.notify(message, 'error');
     }
 }

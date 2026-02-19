@@ -332,6 +332,12 @@ export class GUIAdapter {
       const sig = signature(e);
       const id = keymap[sig];
       if (!id) return;
+
+      // Don't intercept shortcuts when the user is typing in an input or textarea
+      // (e.g. the Paste Netlist dialog). Let the browser handle native behaviour.
+      const tag = e.target.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable) return;
+
       e.preventDefault();
       this.handleAction(id);
     };
