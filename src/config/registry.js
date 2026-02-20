@@ -70,6 +70,8 @@ import { PasteElementsCommand } from "../gui/commands/PasteElementsCommand.js";
 import { SaveNetlistCommand } from "../gui/commands/SaveNetlistCommand.js";
 import { OpenNetlistCommand } from "../gui/commands/OpenNetlistCommand.js";
 import { CopyNetlistToClipboardCommand } from "../gui/commands/CopyNetlistToClipboardCommand.js";
+import { PasteNetlistFromClipboardCommand } from "../gui/commands/PasteNetlistFromClipboardCommand.js";
+import { Notification } from "../gui/components/Notification.js";
 import { WireSplitService } from "../application/WireSplitService.js";
 
 /**
@@ -433,9 +435,24 @@ export function setupCommands(circuitService, circuitRenderer) {
         );
     }
 
+    // Wire a notify callback that delegates to the shared Notification component.
+    const notify = (message, type) => {
+        if (type === 'error') {
+            Notification.error(circuitRenderer, message);
+        } else {
+            Notification.success(circuitRenderer, message);
+        }
+    };
+
     if (!GUICommandRegistry.getTypes().includes("copyNetlistToClipboard")) {
         GUICommandRegistry.register("copyNetlistToClipboard", () =>
-            new CopyNetlistToClipboardCommand(circuitService, circuitRenderer)
+            new CopyNetlistToClipboardCommand(circuitService, circuitRenderer, notify)
+        );
+    }
+
+    if (!GUICommandRegistry.getTypes().includes("pasteNetlistFromClipboard")) {
+        GUICommandRegistry.register("pasteNetlistFromClipboard", () =>
+            new PasteNetlistFromClipboardCommand(circuitService, circuitRenderer, notify)
         );
     }
 }

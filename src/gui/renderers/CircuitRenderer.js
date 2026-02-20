@@ -96,34 +96,23 @@ export class CircuitRenderer {
         this.gridColor = 'gray';        // Color for the grid lines
         this.gridLineWidth = 0.5;         // Line width for grid lines
 
+        // Grid visibility (off by default for performance; toggle with setShowGrid)
+        this.showGrid = false;
+
+        // Stable reference for render scheduling (enables deduplication in RenderScheduler)
+        this._boundPerformRender = () => this.performRender();
+
         // Listen for circuit changes to update spatial index
         this.circuitService.on('elementAdded', () => this.invalidateSpatialIndex());
         this.circuitService.on('elementDeleted', () => this.invalidateSpatialIndex());
         this.circuitService.on('elementMoved', () => this.invalidateSpatialIndex());
         this.circuitService.on('circuitCleared', () => this.invalidateSpatialIndex());
 
-        // Attach Event Listeners
-        this.initEventListeners();
+        // NOTE: Canvas event listeners (wheel, mouse*, dblclick) are NOT registered here.
+        // GUIAdapter is the single owner of all canvas event listeners and calls
+        // our methods (zoom, startPan, pan, stopPan, handleMouseMove, etc.) directly.
     }
     
-    /**
-     * Initializes event listeners for zooming, panning, and double-click property editing.
-     */
-    initEventListeners() {
-        this.canvas.addEventListener("wheel", (event) => this.zoom(event));
-        this.canvas.addEventListener("mousedown", (event) => this.startPan(event));
-        this.canvas.addEventListener("mousemove", (event) => {
-            this.pan(event);
-            this.handleMouseMove(event);
-        });
-        this.canvas.addEventListener("mouseup", () => this.stopPan());
-        this.canvas.addEventListener("mouseleave", () => {
-            this.stopPan();
-            this.clearAllHovers();
-        });
-        this.canvas.addEventListener("dblclick", (event) => this.handleDoubleClick(event));
-    }
-
     /**
      * Clears the canvas by resetting its drawing context.
      */
@@ -135,10 +124,9 @@ export class CircuitRenderer {
      * Optimized render method with scheduling to prevent excessive re-renders
      */
     render() {
-        // Use render scheduler to batch multiple render requests
-        globalRenderScheduler.scheduleRender(() => {
-            this.performRender();
-        });
+        // Use render scheduler to batch multiple render requests.
+        // _boundPerformRender is a stable reference so the Set deduplicates correctly.
+        globalRenderScheduler.scheduleRender(this._boundPerformRender);
     }
 
     /**
@@ -154,8 +142,10 @@ export class CircuitRenderer {
         this.context.translate(this.offsetX, this.offsetY);
         this.context.scale(this.scale, this.scale);
 
-        // Draw background grid
-        this.drawGrid();
+        // Draw background grid (only when enabled)
+        if (this.showGrid) {
+            this.drawGrid();
+        }
 
         // Iterate over circuit elements and render them
         this.circuitService.getElements().forEach((element) => {
@@ -229,6 +219,14 @@ export class CircuitRenderer {
         }
     }
 
+    /**
+     * Toggle grid visibility.
+     * @param {boolean} visible - Whether the dot-grid should be displayed.
+     */
+    setShowGrid(visible) {
+        this.showGrid = !!visible;
+        this.render();
+    }
 
     /**
      * Optimized zoom handler with batched rendering
@@ -517,11 +515,17 @@ export class CircuitRenderer {
     }
 
     /**
-     * Set the selected element with optimized rendering
+     * Set the selected element with optimized rendering.
+     * Also syncs the selectedElements Set so both states are consistent.
      */
     setSelectedElement(element) {
-        if (this.selectedElement !== element) {
-            this.selectedElement = element;
+        const changed = this.selectedElement !== element || this.selectedElements.size > 0;
+        this.selectedElement = element;
+        this.selectedElements.clear();
+        if (element) {
+            this.selectedElements.add(element);
+        }
+        if (changed) {
             this.render();
         }
     }
@@ -594,23 +598,14 @@ export class CircuitRenderer {
      * Cleanup method to remove event listeners and prevent memory leaks
      */
     dispose() {
-        // Remove all canvas event listeners
-        this.canvas.removeEventListener("wheel", this.zoom);
-        this.canvas.removeEventListener("mousedown", this.startPan);
-        this.canvas.removeEventListener("mousemove", this.handleMouseMove);
-        this.canvas.removeEventListener("mouseup", this.stopPan);
-        this.canvas.removeEventListener("mouseleave", this.clearAllHovers);
-        this.canvas.removeEventListener("dblclick", this.handleDoubleClick);
-        
         // Clear any scheduled renders
-        globalRenderScheduler.cancelRender(this.performRender);
+        globalRenderScheduler.cancelRender(this._boundPerformRender);
         
         // Clear references
         this.renderers.clear();
         this.selectedElements.clear();
         this.hoveredElement = null;
         this.selectedElement = null;
-        
     }
 
     /**
@@ -625,10 +620,12 @@ export class CircuitRenderer {
     }
 
     /**
-     * Set multiple selected elements
+     * Set multiple selected elements.
+     * Also clears selectedElement (singular) so both states are consistent.
      * @param {Array|Set} elements - The elements to select
      */
     setSelectedElements(elements) {
+        this.selectedElement = null;
         this.selectedElements.clear();
         if (Array.isArray(elements)) {
             elements.forEach(element => this.selectedElements.add(element));

@@ -301,7 +301,6 @@ export class GUIAdapter {
         this.placingElement = null;
         // Clear selection since placement was cancelled
         this.circuitRenderer.setSelectedElements([]);
-        this.circuitRenderer.render();
         e.preventDefault();
         return;
       }
@@ -333,6 +332,12 @@ export class GUIAdapter {
       const sig = signature(e);
       const id = keymap[sig];
       if (!id) return;
+
+      // Don't intercept shortcuts when the user is typing in an input or textarea
+      // (e.g. the Paste Netlist dialog). Let the browser handle native behaviour.
+      const tag = e.target.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable) return;
+
       e.preventDefault();
       this.handleAction(id);
     };
@@ -345,8 +350,8 @@ export class GUIAdapter {
    * Leaves normal scrolling alone if Ctrl is not pressed.
    */
   bindWheelZoom() {
-    // Let CircuitRenderer handle wheel events directly - it has its own zoom method
-    // No need to bind wheel events here as CircuitRenderer.initEventListeners() handles them
+    this._onWheel = (event) => this.circuitRenderer.zoom(event);
+    this.canvas.addEventListener("wheel", this._onWheel);
   }
 
   /**
@@ -546,8 +551,7 @@ export class GUIAdapter {
     this.canvas.addEventListener("mousedown", (event) => {
       if (event.button === 1) {
         this.canvas.style.cursor = "grabbing";
-        this.panStartX = event.clientX - this.circuitRenderer.offsetX;
-        this.panStartY = event.clientY - this.circuitRenderer.offsetY;
+        this.circuitRenderer.startPan(event);
         return;
       }
 
@@ -580,7 +584,6 @@ export class GUIAdapter {
         this.placingElement = null;
         // Keep the placed element selected for user convenience
         this.circuitRenderer.setSelectedElements([placedElement]);
-        this.circuitRenderer.render();
         
         // Open property panel immediately after placing element
         this.handleElementDoubleClick(placedElement, true); // true indicates this is a newly placed element
@@ -603,11 +606,19 @@ export class GUIAdapter {
           // Normal interaction logic when not in wire drawing mode
           const element = this.findElementAt(offsetX, offsetY);
 
-          // If clicking on an element, select it first
+          // If clicking on an element that is already part of a multi-selection,
+          // preserve the selection so all elements can be dragged together.
+          // Only re-select (which clears multi-selection) when clicking an
+          // element that is NOT currently selected.
           if (element) {
-            const selectCommand = this.guiCommandRegistry.get("selectElement");
-            if (selectCommand) {
-              selectCommand.execute(element);
+            const alreadySelected = this.circuitRenderer.isElementSelected(element);
+            const isMultiSelect = this.circuitRenderer.getSelectedElements().length > 1;
+
+            if (!alreadySelected || !isMultiSelect) {
+              const selectCommand = this.guiCommandRegistry.get("selectElement");
+              if (selectCommand) {
+                selectCommand.execute(element);
+              }
             }
           }
 
@@ -635,6 +646,10 @@ export class GUIAdapter {
 
     // Move / live placement preview / command move
     this.canvas.addEventListener("mousemove", (event) => {
+      // Delegate panning and hover detection to the renderer first
+      this.circuitRenderer.pan(event);
+      this.circuitRenderer.handleMouseMove(event);
+
       const { offsetX, offsetY } = this.getTransformedMousePosition(event);
       
       // Always track current mouse position for immediate element placement
@@ -686,6 +701,7 @@ export class GUIAdapter {
     this.canvas.addEventListener("mouseup", (event) => {
       if (event.button === 1) {
         this.canvas.style.cursor = "default";
+        this.circuitRenderer.stopPan();
         return;
       }
 
@@ -764,6 +780,17 @@ export class GUIAdapter {
         this.resetCursor();
       }
     });
+
+    // Mouse leave → stop panning and clear hover highlights
+    this.canvas.addEventListener("mouseleave", () => {
+      this.circuitRenderer.stopPan();
+      this.circuitRenderer.clearAllHovers();
+    });
+
+    // Double-click → open property panel (delegates element detection to renderer)
+    this.canvas.addEventListener("dblclick", (event) => {
+      this.circuitRenderer.handleDoubleClick(event);
+    });
   }
 
   /**
@@ -809,7 +836,6 @@ export class GUIAdapter {
           this.circuitService.deleteElement(element.id);
           // Clear selections since we deleted the element
           this.circuitRenderer.setSelectedElements([]);
-          this.circuitRenderer.render();
         }
       }
     );
@@ -1092,52 +1118,35 @@ export class GUIAdapter {
   rotatePlacingElement(angle) {
     if (!this.placingElement) return;
 
-    
     // Initialize properties if they don't exist
     if (!this.placingElement.properties) {
       console.warn("[GUIAdapter] Element missing properties, cannot set orientation");
     } else {
-      // Initialize properties.values if it doesn't exist
       if (!this.placingElement.properties.values) {
         this.placingElement.properties.values = {};
       }
-      
-      // Update element's orientation property
-      const currentOrientation = this.placingElement.properties.values.orientation || 0;
-      this.placingElement.properties.values.orientation = (currentOrientation + angle) % 360;
-      
-      // Normalize negative angles
-      if (this.placingElement.properties.values.orientation < 0) {
-        this.placingElement.properties.values.orientation += 360;
-      }
+      const cur = this.placingElement.properties.values.orientation || 0;
+      this.placingElement.properties.values.orientation = ((cur + angle) % 360 + 360) % 360;
     }
     
-    // Get current element center
-    const centerX = (this.placingElement.nodes[0].x + this.placingElement.nodes[1].x) / 2;
-    const centerY = (this.placingElement.nodes[0].y + this.placingElement.nodes[1].y) / 2;
-    
-    // For most components, rotation changes the node positions
+    // node[0] is the fixed anchor; rotate node[1] around it (QuCat convention)
+    const anchor = this.placingElement.nodes[0];
     const angleRad = (angle * Math.PI) / 180;
-    const currentAngleRad = Math.atan2(
-      this.placingElement.nodes[1].y - this.placingElement.nodes[0].y,
-      this.placingElement.nodes[1].x - this.placingElement.nodes[0].x
-    );
-    const newAngleRad = currentAngleRad + angleRad;
-    
-    // Use grid configuration to calculate proper node positions that align to grid
-    const nodePositions = GRID_CONFIG.calculateNodePositions(centerX, centerY, newAngleRad);
-    this.placingElement.nodes[0].x = nodePositions.start.x;
-    this.placingElement.nodes[0].y = nodePositions.start.y;
-    this.placingElement.nodes[1].x = nodePositions.end.x;
-    this.placingElement.nodes[1].y = nodePositions.end.y;
+    const cos = Math.round(Math.cos(angleRad));
+    const sin = Math.round(Math.sin(angleRad));
+
+    for (let i = 1; i < this.placingElement.nodes.length; i++) {
+      const relX = this.placingElement.nodes[i].x - anchor.x;
+      const relY = this.placingElement.nodes[i].y - anchor.y;
+
+      this.placingElement.nodes[i].x = GRID_CONFIG.snapToGrid(anchor.x + relX * cos - relY * sin);
+      this.placingElement.nodes[i].y = GRID_CONFIG.snapToGrid(anchor.y + relX * sin + relY * cos);
+    }
     
     // Emit update event for rotation
     this.circuitService.emit('update', {
       type: 'rotatePlacingElement',
       element: this.placingElement,
     });
-    
-    // Force immediate re-render to show rotation
-    this.circuitRenderer.render();
   }
 }
