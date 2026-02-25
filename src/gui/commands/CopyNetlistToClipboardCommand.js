@@ -65,8 +65,10 @@ export class CopyNetlistToClipboardCommand extends GUICommand {
                     this._showSuccessNotification('Netlist copied to clipboard');
                 })
                 .catch(err => {
-                    console.error('[CopyNetlistToClipboardCommand] Failed to copy to clipboard:', err);
-                    this._showErrorNotification('Failed to copy to clipboard');
+                    // Clipboard API often fails inside iframes without
+                    // the "clipboard-write" permission – try fallbacks.
+                    console.warn('[CopyNetlistToClipboardCommand] Clipboard API denied, trying fallback:', err);
+                    this._copyToClipboardFallback(content);
                 });
         } else {
             // Fallback to older method for browsers that don't support Clipboard API
@@ -94,15 +96,110 @@ export class CopyNetlistToClipboardCommand extends GUICommand {
                 console.log('[CopyNetlistToClipboardCommand] Netlist copied to clipboard (fallback method)');
                 this._showSuccessNotification('Netlist copied to clipboard');
             } else {
-                console.error('[CopyNetlistToClipboardCommand] execCommand failed');
-                this._showErrorNotification('Failed to copy to clipboard');
+                console.warn('[CopyNetlistToClipboardCommand] execCommand failed, showing copy dialog');
+                this._showCopyDialog(content);
             }
         } catch (err) {
-            console.error('[CopyNetlistToClipboardCommand] Fallback copy failed:', err);
-            this._showErrorNotification('Failed to copy to clipboard');
+            console.warn('[CopyNetlistToClipboardCommand] Fallback copy failed, showing copy dialog:', err);
+            this._showCopyDialog(content);
         } finally {
             document.body.removeChild(textArea);
         }
+    }
+
+    /**
+     * Last-resort fallback: show a modal dialog with the netlist text
+     * pre-selected so the user can copy it manually (Ctrl+C / Cmd+C).
+     * This is needed when the app runs inside an iframe that lacks
+     * clipboard-write permission.
+     * @param {string} content - The netlist text to display
+     * @private
+     */
+    _showCopyDialog(content) {
+        if (typeof document === 'undefined' || !document.body) return;
+
+        // --- Overlay ---
+        const overlay = document.createElement('div');
+        overlay.style.cssText = `
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.45);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 10000;
+        `;
+
+        // --- Dialog ---
+        const dialog = document.createElement('div');
+        dialog.style.cssText = `
+            background: #fff; border-radius: 8px;
+            padding: 24px; width: 520px; max-width: 90vw;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+            font-family: Arial, sans-serif;
+        `;
+
+        // Title
+        const title = document.createElement('h3');
+        title.textContent = 'Copy Netlist';
+        title.style.cssText = 'margin: 0 0 8px; font-size: 16px; color: #2c3e50;';
+
+        // Description
+        const isMac = typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform);
+        const shortcut = isMac ? '\u2318+C' : 'Ctrl+C';
+        const desc = document.createElement('p');
+        desc.textContent = `The netlist is shown below. Press ${shortcut} to copy it.`;
+        desc.style.cssText = 'margin: 0 0 12px; font-size: 13px; color: #666;';
+
+        // Textarea (read-only, pre-selected)
+        const textarea = document.createElement('textarea');
+        textarea.value = content;
+        textarea.readOnly = true;
+        textarea.style.cssText = `
+            width: 100%; height: 160px;
+            padding: 10px; font-family: monospace; font-size: 13px;
+            border: 1px solid #ccc; border-radius: 4px;
+            resize: vertical; box-sizing: border-box;
+        `;
+
+        // Button bar
+        const btnBar = document.createElement('div');
+        btnBar.style.cssText = 'display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px;';
+
+        const btnClose = document.createElement('button');
+        btnClose.textContent = 'Close';
+        btnClose.style.cssText = `
+            padding: 8px 18px; border: 1px solid #ccc; border-radius: 4px;
+            background: #fff; cursor: pointer; font-size: 13px;
+        `;
+
+        btnBar.append(btnClose);
+        dialog.append(title, desc, textarea, btnBar);
+        overlay.appendChild(dialog);
+        document.body.appendChild(overlay);
+
+        // Auto-select all text so user can immediately Ctrl+C / Cmd+C
+        textarea.focus();
+        textarea.select();
+
+        // --- Cleanup helper ---
+        const close = () => {
+            if (overlay.parentNode) document.body.removeChild(overlay);
+        };
+
+        btnClose.addEventListener('click', close);
+
+        // Esc key dismisses
+        const onKeydown = (e) => {
+            if (e.key === 'Escape') {
+                e.stopPropagation();
+                close();
+                document.removeEventListener('keydown', onKeydown, true);
+            }
+        };
+        document.addEventListener('keydown', onKeydown, true);
+
+        // Click on overlay (outside dialog) dismisses
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) close();
+        });
     }
 
     /**
