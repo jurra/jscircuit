@@ -62,7 +62,8 @@ export class QucatNetlistAdapter {
 
     /**
      * Internal: Serialize elements into .qucat netlist lines.
-     * Converts pixel coordinates to logical coordinates for compact file format.
+     * Converts pixel coordinates to v1.0 grid coordinates for QuCat Python compatibility.
+     * Pipeline: pixel → v2.0 grid → v1.0 grid
      * 
      * @param {Array<Object>} elements - Serialized element objects.
      * @returns {string} Netlist string content.
@@ -75,15 +76,18 @@ export class QucatNetlistAdapter {
             const shortType = elementTypeToShortCode[type];
             if (!shortType) throw new Error(`Unknown element type: ${type}`);
 
-            // Convert pixel coordinates to logical coordinates
+            // Convert pixel coordinates → v2.0 grid → v1.0 grid
             const pixelPos1 = new Position(nodes[0].x, nodes[0].y);
             const pixelPos2 = new Position(nodes[1].x, nodes[1].y);
             
-            const logical1 = CoordinateAdapter.pixelToGrid(pixelPos1);
-            const logical2 = CoordinateAdapter.pixelToGrid(pixelPos2);
+            const v2Grid1 = CoordinateAdapter.pixelToGrid(pixelPos1);
+            const v2Grid2 = CoordinateAdapter.pixelToGrid(pixelPos2);
 
-            const node1 = `${logical1.x},${logical1.y}`;
-            const node2 = `${logical2.x},${logical2.y}`;
+            const v1Grid1 = CoordinateAdapter.v2ToV1Grid(v2Grid1);
+            const v1Grid2 = CoordinateAdapter.v2ToV1Grid(v2Grid2);
+
+            const node1 = `${v1Grid1.x},${v1Grid1.y}`;
+            const node2 = `${v1Grid2.x},${v1Grid2.y}`;
 
             // Get the main property for this element type
             const mapEntry = typeMap[shortType];

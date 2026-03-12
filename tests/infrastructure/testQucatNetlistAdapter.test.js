@@ -37,11 +37,12 @@ describe('QucatNetlistAdapter roundtrip test with CircuitService', () => {
         const circuit = new Circuit();
         const service = new CircuitService(circuit, ElementRegistry);
 
-        // Create and add a mix of resistors and wires using grid-aligned pixel coordinates
+        // Create and add a mix of resistors and wires using v1.0-aligned pixel coordinates
+        // (multiples of 50px so roundtrip through v1.0 grid is lossless)
         const r1 = new Resistor('R1', [new Position(0, 0), new Position(50, 0)], null, new Properties({ resistance: 1000 }));
-        const r2 = new Resistor('R2', [new Position(20, 10), new Position(70, 10)], null, new Properties()); // intentionally empty properties
-        const w1 = new Wire('W1', [new Position(50, 0), new Position(50, 10)]);
-        const w2 = new Wire('W2', [new Position(50, 10), new Position(20, 10)]);
+        const r2 = new Resistor('R2', [new Position(50, 50), new Position(100, 50)], null, new Properties()); // intentionally empty properties
+        const w1 = new Wire('W1', [new Position(50, 0), new Position(50, 50)]);
+        const w2 = new Wire('W2', [new Position(100, 50), new Position(0, 0)]);
 
         [r1, w1, w2, r2].forEach(el => service.addElement(el));
         originalElements = service.getElements();
@@ -87,14 +88,14 @@ describe('QucatNetlistAdapter roundtrip test with CircuitService', () => {
         const imported = QucatNetlistAdapter.importFromString(netlistContent);
 
         // Since IDs are not roundtripped, match by type and node positions
-        // The logical coordinates (2,1)-(7,1) from export become pixel coordinates (20,10)-(70,10) on import
+        // v1.0 coordinates (1,1)-(2,1) from export → v2.0 (5,5)-(10,5) → pixel (50,50)-(100,50)
         const r2 = imported.find(el =>
             el.type === 'resistor' &&
-            el.nodes[0].x === 20 && el.nodes[0].y === 10 &&
-            el.nodes[1].x === 70 && el.nodes[1].y === 10
+            el.nodes[0].x === 50 && el.nodes[0].y === 50 &&
+            el.nodes[1].x === 100 && el.nodes[1].y === 50
         );
 
-        assert(r2, 'Expected resistor at pixel coordinates (20,10)-(70,10)');
+        assert(r2, 'Expected resistor at pixel coordinates (50,50)-(100,50)');
         assert('resistance' in r2.properties.values);
         assert.strictEqual(r2.properties.values.resistance, undefined);
     });
@@ -103,7 +104,7 @@ describe('QucatNetlistAdapter roundtrip test with CircuitService', () => {
         const netlistContent = fs.readFileSync(EXPORT_PATH, 'utf-8');
         const imported = QucatNetlistAdapter.importFromString(netlistContent);
 
-        // The logical coordinates (0,0)-(5,0) from export become pixel coordinates (0,0)-(50,0) on import
+        // v1.0 coordinates (0,0)-(1,0) from export → v2.0 (0,0)-(5,0) → pixel (0,0)-(50,0)
         const r1 = imported.find(el =>
             el.type === 'resistor' &&
             el.nodes[0].x === 0 && el.nodes[0].y === 0 &&
@@ -117,6 +118,23 @@ describe('QucatNetlistAdapter roundtrip test with CircuitService', () => {
     it('Should encode values in scientific notation when appropriate', () => {
         const netlist = fs.readFileSync(EXPORT_PATH, 'utf-8');
         assert(/1\.0+e\+3|1\.000000e\+03/.test(netlist), 'Scientific notation should be used for large values');
+    });
+
+    it('Should export in v1.0 format with component spans of 1', () => {
+        const netlist = fs.readFileSync(EXPORT_PATH, 'utf-8');
+        const lines = netlist.trim().split('\n');
+
+        // Resistor lines should have a Manhattan span of 1 (v1.0 format)
+        const resistorLines = lines.filter(l => l.startsWith('R;'));
+        assert(resistorLines.length > 0, 'Should have resistor lines');
+
+        for (const line of resistorLines) {
+            const [, pos1, pos2] = line.split(';');
+            const [x1, y1] = pos1.split(',').map(Number);
+            const [x2, y2] = pos2.split(',').map(Number);
+            const span = Math.abs(x2 - x1) + Math.abs(y2 - y1);
+            assert.strictEqual(span, 1, `Resistor should have v1.0 span of 1, got ${span}: ${line}`);
+        }
     });
 
     it('Should roundtrip the entire structure accurately', () => {
