@@ -4,6 +4,7 @@ import { Circuit } from '../../src/domain/aggregates/Circuit.js';
 import { CircuitService } from '../../src/application/CircuitService.js';
 import { Resistor } from '../../src/domain/entities/Resistor.js';
 import { Wire } from '../../src/domain/entities/Wire.js';
+import { Ground } from '../../src/domain/entities/Ground.js';
 import { Position } from '../../src/domain/valueObjects/Position.js';
 import { Properties } from '../../src/domain/valueObjects/Properties.js';
 import { QucatNetlistAdapter } from '../../src/infrastructure/adapters/QucatNetlistAdapter.js';
@@ -135,6 +136,57 @@ describe('QucatNetlistAdapter roundtrip test with CircuitService', () => {
             const span = Math.abs(x2 - x1) + Math.abs(y2 - y1);
             assert.strictEqual(span, 1, `Resistor should have v1.0 span of 1, got ${span}: ${line}`);
         }
+    });
+
+    it('Should export ground with QuCat minus/plus convention', () => {
+        const circuit = new Circuit();
+        const service = new CircuitService(circuit, ElementRegistry);
+
+        // JSCircuit ground representation:
+        // nodes[0] = connection node, nodes[1] = phantom/body-side reference
+        // Example mirrors alpha notebook geometry in v2 coordinates:
+        // connection (-7,-5), phantom (-12,-5) => pixels (-70,-50), (-120,-50)
+        const ground = new Ground(
+            'G1',
+            [new Position(-70, -50), new Position(-120, -50)],
+            null,
+            new Properties({})
+        );
+        service.addElement(ground);
+
+        const netlist = QucatNetlistAdapter.exportToString(circuit);
+        const [line] = netlist.trim().split('\n');
+
+        // QuCat expects pos1=minus(body), pos2=plus(connection)
+        // nodes[0] (connection) pixel(-70,-50) → v2(-7,-5) → v1(-1,-1)
+        // nodes[1] (phantom/body) pixel(-120,-50) → v2(-12,-5) → v1(-2,-1)
+        // Swap: pos1=body(-2,-1), pos2=connection(-1,-1)
+        assert.strictEqual(line, 'G;-2,-1;-1,-1;;');
+    });
+
+    it('Should import ground with nodes[0]=connection, nodes[1]=body', () => {
+        // QuCat netlist: G;pos1(body);pos2(connection);;
+        // Reference from QuCat example notebook: G;-2,-1;-2,0;;
+        const netlist = 'C;-2,-1;-1,-1;1.0e-13;\nL;-2,0;-1,0;1.0e-8;\nW;-2,0;-2,-1;;\nW;-1,-1;-1,0;;\nG;-2,-1;-2,0;;';
+        const elements = QucatNetlistAdapter.importFromString(netlist);
+
+        const ground = elements.find(el => el.type === 'ground');
+        assert(ground, 'Should find a ground element');
+
+        // QuCat pos2 (-2,0) = connection → should become nodes[0]
+        // v1(-2,0) → v2(-10,0) → pixel(-100,0)
+        assert.strictEqual(ground.nodes[0].x, -100, 'nodes[0].x should be connection x');
+        assert.strictEqual(ground.nodes[0].y, 0, 'nodes[0].y should be connection y');
+
+        // QuCat pos1 (-2,-1) = body → should become nodes[1]
+        // v1(-2,-1) → v2(-10,-5) → pixel(-100,-50)
+        assert.strictEqual(ground.nodes[1].x, -100, 'nodes[1].x should be body x');
+        assert.strictEqual(ground.nodes[1].y, -50, 'nodes[1].y should be body y');
+
+        // body→connection direction is (0,+50) = DOWN in canvas → atan2(50,0) = 90°
+        // 90° rotation: body LEFT → body UP (matching QuCat)
+        assert.strictEqual(ground.properties.values.orientation, 90,
+            'Ground orientation should be 90° (body UP in canvas, matching QuCat)');
     });
 
     it('Should roundtrip the entire structure accurately', () => {

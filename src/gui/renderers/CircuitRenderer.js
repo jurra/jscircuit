@@ -47,6 +47,17 @@ export class CircuitRenderer {
                 new RendererClass(this.context),
             ])
         );
+
+        // Warm image caches so first paste/import doesn't trigger a loading cascade.
+        // Each renderer's initImageIfNeeded() is async (Image decode) and fires a
+        // 'renderer:imageLoaded' event on completion, which is already wired to
+        // re-render.  Doing this at construction time moves the decode cost to
+        // app startup instead of the first user interaction.
+        for (const renderer of this.renderers.values()) {
+            if (typeof renderer.initImageIfNeeded === 'function') {
+                renderer.initImageIfNeeded();
+            }
+        }
     
         // Dragging and Transformations
         this.draggedElement = null;
