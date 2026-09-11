@@ -300,7 +300,8 @@ export class CircuitRenderer {
      * @param {MouseEvent} event - The mouse event.
      */
     startPan(event) {
-        if (event.button !== 1) return; // Middle mouse button only
+        // Middle mouse button, or Shift+Left-click
+        if (event.button !== 1 && !(event.button === 0 && event.shiftKey)) return;
 
         this.isPanning = true;
         this.startPan.x = event.clientX - this.offsetX;

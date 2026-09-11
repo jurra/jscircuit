@@ -587,6 +587,14 @@ export class GUIAdapter {
         return;
       }
 
+      // Shift+Left-click pan (mirrors middle-mouse pan)
+      if (event.button === 0 && event.shiftKey) {
+        this.canvas.style.cursor = "grabbing";
+        this.isShiftPanning = true;
+        this.circuitRenderer.startPan(event);
+        return;
+      }
+
       const { offsetX, offsetY } = this.getTransformedMousePosition(event);
 
       // Finalize a pasted group with one grid-aligned translation. Snapping a
@@ -598,6 +606,11 @@ export class GUIAdapter {
 
       // If placing an element, finalize its position on left click
       if (event.button === 0 && this.placingElement) {
+        // Prevent the browser's default mousedown focus handling: since the
+        // canvas itself isn't focusable, it would otherwise steal focus back
+        // from the property panel's input right after we set it below.
+        event.preventDefault();
+
         // Get current orientation from element properties (preserve rotation)
         const currentOrientation = this.placingElement.properties?.values?.orientation || 0;
         // Ground's base 180° orientation is rendering-only for geometry placement.
@@ -747,6 +760,13 @@ export class GUIAdapter {
         return;
       }
 
+      if (event.button === 0 && this.isShiftPanning) {
+        this.canvas.style.cursor = "default";
+        this.isShiftPanning = false;
+        this.circuitRenderer.stopPan();
+        return;
+      }
+
       const { offsetX, offsetY } = this.getTransformedMousePosition(event);
 
       // Finalize selection box if selecting
@@ -814,6 +834,8 @@ export class GUIAdapter {
 
     // Mouse leave → stop panning and clear hover highlights
     this.canvas.addEventListener("mouseleave", () => {
+      this.isShiftPanning = false;
+      this.canvas.style.cursor = "default";
       this.circuitRenderer.stopPan();
       this.circuitRenderer.clearAllHovers();
     });
