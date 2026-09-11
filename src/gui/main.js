@@ -209,7 +209,7 @@ window.addEventListener('message', function(event) {
       Logger.info('[Documentation] Loading example circuit from documentation');
       
       // Get the openNetlist command and use its internal methods
-      const openCommand = guiCommandRegistry.get('openNetlist');
+      const openCommand = GUICommandRegistry.get('openNetlist');
       if (openCommand) {
         // Store current state for undo
         openCommand.previousState = circuitService.exportState();
