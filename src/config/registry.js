@@ -294,34 +294,6 @@ export function setupCommands(circuitService, circuitRenderer) {
     }
 
         // Register rotation commands
-    if (!GUICommandRegistry.getTypes().includes("rotateRight")) {
-        GUICommandRegistry.register("rotateRight", (circuitService, circuitRenderer, elementRegistry) => ({
-            execute: () => {
-                const before = circuitService.exportState();
-                const selectedElements = circuitRenderer.getSelectedElements();
-                
-                if (!selectedElements || selectedElements.length === 0) {
-                    return { undo: () => {} }; // No-op if nothing selected
-                }
-                
-                if (selectedElements.length > 1) {
-                    return { undo: () => {} }; // No-op if multiple elements selected
-                }
-                
-                // Get element IDs for single element rotation
-                const elementIds = selectedElements.map(element => element.id);
-                
-                // Rotate 90 degrees clockwise (to the right)
-                circuitService.rotateElements(elementIds, 90);
-                
-                
-                return {
-                    undo: () => circuitService.importState(before)
-                };
-            },
-        }));
-    }
-
     if (!GUICommandRegistry.getTypes().includes("rotateUp")) {
         GUICommandRegistry.register("rotateUp", (circuitService, circuitRenderer, elementRegistry) => ({
             execute: () => {
@@ -341,34 +313,6 @@ export function setupCommands(circuitService, circuitRenderer) {
                 
                 // Rotate 180 degrees (flip upside down)
                 circuitService.rotateElements(elementIds, 180);
-                
-                
-                return {
-                    undo: () => circuitService.importState(before)
-                };
-            },
-        }));
-    }
-
-    if (!GUICommandRegistry.getTypes().includes("rotateLeft")) {
-        GUICommandRegistry.register("rotateLeft", (circuitService, circuitRenderer, elementRegistry) => ({
-            execute: () => {
-                const before = circuitService.exportState();
-                const selectedElements = circuitRenderer.getSelectedElements();
-                
-                if (!selectedElements || selectedElements.length === 0) {
-                    return { undo: () => {} }; // No-op if nothing selected
-                }
-                
-                if (selectedElements.length > 1) {
-                    return { undo: () => {} }; // No-op if multiple elements selected
-                }
-                
-                // Get element IDs for single element rotation
-                const elementIds = selectedElements.map(element => element.id);
-                
-                // Rotate 90 degrees counter-clockwise (to the left)
-                circuitService.rotateElements(elementIds, -90);
                 
                 
                 return {

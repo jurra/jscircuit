@@ -324,14 +324,8 @@ export class GUIAdapter {
       // Handle rotation keys during element placement
       if (this.placingElement && e.ctrlKey && e.shiftKey) {
         let rotationAngle = 0;
-        
-        if (e.key === 'ArrowRight') {
-          rotationAngle = 90; // Rotate 90° clockwise
-          e.preventDefault();
-        } else if (e.key === 'ArrowLeft') {
-          rotationAngle = -90; // Rotate 90° counterclockwise
-          e.preventDefault();
-        } else if (e.key === 'ArrowUp') {
+
+        if (e.key === 'ArrowUp') {
           rotationAngle = 180; // Rotate 180°
           e.preventDefault();
         } else if (e.key === 'ArrowDown') {
@@ -471,8 +465,8 @@ export class GUIAdapter {
           this.resetCursor();
         }
 
-        if (this.placingElement && (spec.name === "rotateRight" || spec.name === "rotateLeft")) {
-          this.rotatePlacingElement(spec.name === "rotateRight" ? 90 : -90);
+        if (this.placingElement && spec.name === "rotateElement") {
+          this.rotatePlacingElement(90);
           break;
         }
 

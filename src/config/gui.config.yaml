@@ -190,15 +190,10 @@ menus:
         shortcut: "← ↑ → ↓"
         disabled: true
         
-      - id: rotateElementRight
-        label: "Rotate Right"
-        shortcut: Ctrl+Shift+Right
-        action: { kind: command, name: rotateRight }
-
-      - id: rotateElementLeft
-        label: "Rotate Left"
-        shortcut: Ctrl+Shift+Left
-        action: { kind: command, name: rotateLeft }
+      - id: rotateElement
+        label: "Rotate"
+        shortcut: Ctrl+R
+        action: { kind: command, name: rotateElement }
 
   - label: Insert
     items:
@@ -237,7 +232,7 @@ menus:
 
       - id: view.recenter
         label: Re-center
-        shortcut: Ctrl+R
+        shortcut: Ctrl+Shift+R
         action: { kind: renderer, op: recenter }
 
   - label: Move
