@@ -84,9 +84,3 @@ npm run docs:serve
 This project builds upon the original QuCat GUI developed by **Mario Gely**, which provided the foundational concepts for circuit visualization and interaction as a reference to develop this application.
 
 We acknowledge the support of the **TU Delft Digital Competence Center** in advancing this project.
-
-## Licensed under the MIT License.
-
-Technische Universiteit Delft hereby disclaims all copyright interest in the program "JSCircuit" written by the Author(s).
-
-— Prof. Paulien Herder, Dean of the faculty of Applied Sciences at TU Delft

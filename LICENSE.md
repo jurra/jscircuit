@@ -1,6 +1,11 @@
 MIT License
 
-Copyright (c) 2018 Mario F. Gely (mario.f.gely@gmail.com)
+Technische Universiteit Delft hereby disclaims all copyright interest in the
+program "JSCircuit" written by the Author(s).
+
+— Prof. Paulien Herder, Dean of the faculty of Applied Sciences at TU Delft
+
+Copyright (c) 2018 Jose C. Urra, Gary Steele, Susan Branchett
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
