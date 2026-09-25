@@ -8,7 +8,7 @@ project:
   content_type: software
 ai_usage:
   used: true
-  summary: The maintainer defined the architecture, design constraints, and quality criteria, and reviewed the final result. AI assisted with code completion, implementation, debugging, documentation, and review under that human guidance.
+  summary: The developer defined the architecture, design constraints, and quality criteria, and reviewed the final result. AI assisted with code completion, implementation, debugging, documentation, and review under that human guidance.
   level: significant
   tools:
   - name: Claude
